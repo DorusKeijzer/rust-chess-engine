@@ -1,6 +1,5 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
-use crate::utils::bitset;
 
 pub const NUMBER_CHARACTERS : usize = 12;
 pub const PIECE_CHARACTERS: [ char;12 ] = ['P','R','K','N','Q','B','p','r','k','n','q','b'];
@@ -33,6 +32,7 @@ pub struct Board
 
 impl Board
 {
+    #[allow(dead_code)]
     pub fn parse_fen(&mut self, fenstring : &str)
     {
         // to iterate over the square indices (backwards)
@@ -77,7 +77,10 @@ pub fn draw_board(board: Board)
         while piecenotfound && bbindex < NUMBER_CHARACTERS
         {
             let piecebb = board.bitboards[bbindex];
-            if bitset( piecebb, i) 
+            if {
+                let mask: u64 = 1 << i;
+                mask & piecebb != 0
+            } 
             {
                 // the character of the piece if a piece is found
                 result.push(PIECE_CHARACTERS[bbindex]);
@@ -108,7 +111,10 @@ pub fn draw_bb(bb: u64)
         let j = 7-j;
         for i in (k..k+8).rev() 
         {
-            if bitset(bb, i)
+            if {
+                let mask: u64 = 1 << i;
+                mask & bb != 0
+            }
             {result.push_str(" 1 ")}
             else
             {result.push_str(" 0 ");}
