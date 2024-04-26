@@ -25,12 +25,12 @@ lazy_static! {
     };
 }
 
-pub struct Board
+pub struct Board<'a>
 {
-    pub bitboards : [u64;12],
+    pub bitboards : &'a mut [u64;12],
 }
 
-impl Board
+impl Board<'_>
 {
     #[allow(dead_code)]
     pub fn parse_fen(&mut self, fenstring : &str)
