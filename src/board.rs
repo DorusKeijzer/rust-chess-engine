@@ -97,34 +97,3 @@ pub fn draw_board(board: Board)
 
 }
 
-
-pub fn draw_bb(bb: u64)
-{
-    println!("     A  B  C  D  E  F  G  H");
-    println!("");
-
-    let mut result: String = String::from("");
-    // this order is used to preserve little-endian indexing
-    for j in (0..8).rev()
-    {
-        let k = j * 8;
-        let j = 7-j;
-        for i in (k..k+8).rev() 
-        {
-            if {
-                let mask: u64 = 1 << i;
-                mask & bb != 0
-            }
-            {result.push_str(" 1 ")}
-            else
-            {result.push_str(" 0 ");}
-        }
-        println!("{}   {result}", j+1);
-        println!("");
-        result = String::from("");
-
-    }
-}
-
-
-
