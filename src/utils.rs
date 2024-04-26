@@ -1,10 +1,10 @@
-use std::{error, fmt::Error};
+use std::fmt::Error;
 
 use crate::board::Board;
-
+#[allow(dead_code)]
 /// Creates a mask from a given index  
 pub fn mask(index: u8) -> u64 { 1 << index }
-
+#[allow(dead_code)]
 /// Checks if a specific bit is set in a given bitboard.
 ///
 /// # Arguments
@@ -37,7 +37,6 @@ pub fn bitset(bb: &u64, index: u8) -> bool
 /// This function generates a bitboard with only one bit set at the given index,
 /// while all other bits are zero.
 #[allow(dead_code)]
-
 pub fn get_square(index: u8) -> Result<u64, Error> 
 {
     assert!(index < 64, "Index out of range");

@@ -11,7 +11,7 @@ fn main() {
     make_move(&mut board, chessmove);
     draw_board(board);
 }
-
+#[allow(dead_code)]
 struct Move
 {
     from: u8,

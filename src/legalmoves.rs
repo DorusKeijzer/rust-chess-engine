@@ -43,9 +43,10 @@ fn knight_attacks(knight_bb: u64) -> u64
     let r2 = (knight_bb << 2) & 0xfcfcfcfcfcfcfcfc;
     let h1 = l1 | r1;
     let h2 = l2 | r2;
-    (h1<<16) | (h1>>16) | (h2<<8) | (h2>>8) ^ knight_bb
+    (h1<<16) | (h1>>16) | (h2<<8) | (h2>>8) 
 }
-
+#[allow(dead_code)]
+#[allow(unused_variables)]
 /// Performs perft (Performance Test) for a given depth.
 ///
 /// This function computes the number of possible moves for a given depth in the game tree.
