@@ -110,7 +110,6 @@ pub fn draw_bb(bb: u64)
 }
 
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
