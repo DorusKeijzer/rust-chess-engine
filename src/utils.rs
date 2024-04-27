@@ -42,27 +42,31 @@ pub fn get_square(index: u8) -> Result<u64, Error>
     assert!(index < 64, "Index out of range");
     Ok(1 << index)
 }
-#[allow(dead_code)]
-/// Searches for the presence of a specific bit at the given index across multiple bitboards.
+/// Finds the index of the bitboard containing a particular bit.
+///
+/// This function iterates through the provided `bitboards` and checks each bitboard
+/// to find the one containing the specified `index`. If the index is found in any
+/// of the bitboards, it returns the index of that bitboard. If the index is out of range
+/// (greater than or equal to 64), it will panic.
 ///
 /// # Arguments
 ///
-/// * `bitboards` - A collection of bitboards to search within.
-/// * `index` - The index of the bit to search for (0-based).
+/// * `bitboards` - A reference to the `Board` struct containing multiple bitboards.
+/// * `index` - The index of the bit to find within the bitboards. It should be less than 64.
 ///
 /// # Returns
 ///
-/// * `Some(u64)` containing the first bitboard where the specified bit is set, if found.
-/// * `None` if the specified bit is not set in any of the bitboards.
+/// * `Some(usize)` - The index of the bitboard containing the specified index.
+/// * `None` - If the specified index is not found in any of the bitboards.
 ///
-/// # Note
+/// # Panics
 ///
-/// This function assumes that each bitboard represents a set of bits and `index` refers to
-/// a position within these bitboards.
+/// Panics if the specified `index` is out of range (greater than or equal to 64).
+///
+#[allow(dead_code)]
 pub fn find_bitboard(bitboards: &Board, index: u8) -> Option<usize> {
     assert!(index < 64, "Index out of range");
     for (i, bitboard) in bitboards.bitboards.iter().enumerate() {
-        println!("{},bb: {}, index: {}", i, *bitboard, index);
         if bitset(bitboard, index) {
             return Some(i);
         }
@@ -87,29 +91,29 @@ pub fn draw_bb(bb: u64)
 
     let mut result: String = String::from("");
     // this order is used to preserve little-endian indexing
-    for j in (0..8).rev()
+    for row in (0..8).rev()
     {
-        let k = j * 8;
-        let j = 7-j;
-        for i in (k..k+8).rev() 
+        let k = row * 8;
+        let row = 7-row;
+        for col in (k..k+8)//.rev() 
         {
             if {
-                let mask: u64 = 1 << i;
+                let mask: u64 = 1 << col;
                 mask & bb != 0
             }
             {result.push_str(" 1 ")}
             else
             {result.push_str(" 0 ");}
         }
-        println!("{}   {result}", j+1);
+        println!("{}   {result}", row+1);
         println!("");
         result = String::from("");
 
     }
+
 }
 
-
-#[cfg(test)]
+ #[cfg(test)]
 mod tests {
     use super::*;
 
@@ -136,7 +140,7 @@ mod tests {
     #[test]
     fn test_find_bitboard() {
         let bitboards = Board {
-            bitboards: &mut [
+            bitboards: Box::new([
                 0b0000_0000_0000_0001,
                 0b0000_0000_0000_0010,
                 0b0000_0000_0000_0100,
@@ -149,7 +153,7 @@ mod tests {
                 0b0000_0010_0000_0000,
                 0b0000_0100_0000_0000,
                 0b0000_1000_0000_0000,
-            ],
+            ]),
         };
         assert_eq!(find_bitboard(&bitboards, 0), Some(0));
         assert_eq!(find_bitboard(&bitboards, 1), Some(1));
@@ -172,6 +176,5 @@ mod tests {
         move_piece(&mut bitboard, 0, 1);
         assert_eq!(bitboard, 0b0000_0000_0000_0011);
     }
-
-    // Add more tests as needed for other functions...
 }
+
