@@ -1,12 +1,15 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
+use crate::utils;
+
 pub const NUMBER_CHARACTERS : usize = 12;
 pub const PIECE_CHARACTERS: [ char;12 ] = ['P','R','K','N','Q','B','p','r','k','n','q','b'];
 // returns the index of the pieces
 // returns the index of the pieces
 
 lazy_static! {
+    /// Maps a piece name to the corresponding bitboard
     static ref PIECE_INDEX_MAP: HashMap<char, usize> = {
         let mut map = HashMap::new();
         map.insert('P', 0);
@@ -24,14 +27,21 @@ lazy_static! {
         map
     };
 }
+/// Stores the state of the board in 12 bit boards. The order is as follows:
+/// 
+/// white: P: 0,  R: 1,  K: 2,  N: 3,  Q: 4,  B: 5
+/// 
+/// black: p: 6,  r: 7,  k: 8,  n: 9,  q: 10,  b: 11'
 
-pub struct Board<'a>
-{
-    pub bitboards : &'a mut [u64;12],
+pub struct Board {
+    pub bitboards: Box<[u64; 12]>,
 }
 
-impl Board<'_>
-{
+impl Board {
+    pub fn new() -> Self {
+        Self { bitboards: Box::new([0; 12]) }
+    }
+
     #[allow(dead_code)]
     pub fn parse_fen(&mut self, fenstring : &str)
     {
@@ -53,7 +63,7 @@ impl Board<'_>
 }
 
 
-pub fn draw_board(board: Board)
+pub fn draw_board(board: &Board)
 {
     println!("");
     println!("     A  B  C  D  E  F  G  H");
@@ -61,39 +71,40 @@ pub fn draw_board(board: Board)
 
     let mut result: String = String::from("");
     // this order is used to preserve little-endian indexing
-    let mut j = 0;
+    let mut col = 8;
     for i in (0..64).rev()
     {
-        if j == 8 { 
-            j = 0;
-            println!("{}   {}", 8- i / 8, result);
+        // when every column in a row is filled, print this row
+        if col == 0 { 
+            col = 8;
+            println!("{}  {}", 7 - i / 8, result);
             println!("");
             result = String::from("");
         }
         result.push(' ');
-        // for every bitboard in the board
+        // iterate over the bitboards in the board
         let mut piecenotfound = true;
-        let mut bbindex = 0;
+        let mut bbindex = 0; // index of the bitboards
         while piecenotfound && bbindex < NUMBER_CHARACTERS
         {
             let piecebb = board.bitboards[bbindex];
-            if {
-                let mask: u64 = 1 << i;
-                mask & piecebb != 0
-            } 
+
+            if utils::bitset(&piecebb, i)
             {
                 // the character of the piece if a piece is found
-                result.push(PIECE_CHARACTERS[bbindex]);
+                result.insert(0, PIECE_CHARACTERS[bbindex]);
                 piecenotfound = false;
             } 
             bbindex += 1;
         }
-        if piecenotfound{result.push('0'); }
+        if piecenotfound{result.insert(0,'0'); }
         
-        result.push(' ');
-        j += 1;
+        result.insert(0, ' ');
+        result.insert(0,' ');
+
+        col -= 1;
     }
-    println!("{}   {}", 8, result);
+    println!("{}  {}", 8, result);
 
 }
 
