@@ -1,8 +1,21 @@
 use lazy_static::lazy_static;
 use crate::{board::{self, Board}, utils, Turn};
 use std::ops::Index;
+use std::slice::SliceIndex;
 
 lazy_static! {
+    /// Stores all the ray attacks. 
+    /// 
+    /// * 0 : north-west
+    /// * 1 : north
+    /// * 2 : north-east
+    /// * 3 : east
+    /// * 4 : south-east
+    /// * 5 : south
+    /// * 6 : south-west
+    /// * 7 : west
+    pub static ref RAY_ATTACKS: [[u64; 64]; 8] = init_ray_attacks();
+
     /// Stores all the possible knight moves. 
     /// `KNIGHT_MOVES[i]` holds the possible moves for a knight at square `i`
     pub static ref KNIGHT_MOVES: [u64; 64] = init_knight_tables();
@@ -18,75 +31,80 @@ lazy_static! {
     /// Stores all the possible queen moves.
     /// `QUEEN_MOVES[i]` holds the possible moves for a queen at square `i`
     static ref QUEEN_MOVES: [u64; 64] = init_queen_tables();
-
-    static ref RAY_ATTACKS: [[u64; 64]; 8] = init_ray_attacks();
 }
 
-pub enum Direction
-{
-    // positive
-    East,
-    North, 
-    NorthEast,
-    NorthWest,
-    // negative
-    West,
-    South,
-    SouthWest,
-    SouthEast
-}
 
-// implements Index for direction, so that it can be used as an index.
-impl Index<Direction> for [u64] {
-    type Output = usize;
-
-    fn index(&self, direction: Direction) -> &Self::Output {
-        match direction {
-            Direction::East=> &0,
-            Direction::North=> &1, 
-            Direction::NorthEast=> &2,
-            Direction::NorthWest=> &3,
-            Direction::West=> &4,
-            Direction::South=> &5,
-            Direction::SouthWest=> &6,
-            Direction::SouthEast=> &7,
-        }
-    }
-}
-
-fn init_ray_attacks() -> [[u64; 64]; 8]
+pub fn init_ray_attacks() -> [[u64; 64]; 8]
 {
     let mut res: [[u64; 64]; 8] = [[0;64]; 8];
-    res[Direction::North] = north_rays();
+    res[0] = north_west_rays();
+    res[1] = north_rays();
+    res[2] = north_east_rays();
+    res[3] = east_rays();
     res
+}
+
+fn north_west_rays() -> [u64; 64]
+{
+    let mut res: [u64; 64] = [0;64];
+    let north_west_ray: u64 = 0x102040810204000; // diagonal
+    for row in (0..64).step_by(8).rev()
+    {
+        for col in 0..8
+        {
+            let mut mask:u64 = 0x8080808080808080; // north facing ray, to mask wrapping numbers with
+
+            let diagonal = north_west_ray >> col + row;
+            for p in 0..col
+            {
+                
+                mask |= mask >> 1;
+            }
+            res[63-((col%8) + row)] = mask & diagonal;
+        }
+    }
+
+    res
+}
+fn east_rays() -> [u64; 64]
+{
+    let mut res = [0; 64];
+    for i in 0..64
+    {
+        res[i] = 2 * ((1 << (i | 7)) - (1 << i));
+    }
+    res   
 }
 
 fn north_rays() -> [u64;64]
 {
-    let mut north = 0x0101010101010100;
+    let mut res: [u64; 64] = [0;64];
+    let mut north = 0x0101010101010100; // north facing ray
     for square in 0..64
     {
-        north <<= 1;
-        RAY_ATTACKS[square][Direction::North] = north;
+        res[square] = north; 
+        north <<= 1; // slide north facing ray left and (upwards upon wrap)
     }
-
+    res
 }
 
-fn north_east_rays()
+fn north_east_rays()-> [u64;64]
 {
-//     let mut noea = 0x8040201008040200;
-//     for f in 0..8
-//     {
-//         let noae = ...
-//         let ne = noae
-//         for r8 in 0.88
-//         RAY_ATTACKS[f][Direction::NorthEast] = north;
-//     }
-//     {
-// for (int f=0; f < 8; f++, noea = eastOne(noea) {
-//    U64 ne = noea;
-//    for (int r8 = 0; r8 < 8*8; r8 += 8, ne <<= 8)
-//       rayAttacks[r8+f][NoEa] = ne;
+    let mut res: [u64; 64] = [0;64];
+    let north_east_ray: u64 = 0x8040201008040200; // diagonal
+    let mut mask:u64 = 0x0101010101010100; // north facing ray, to mask wrapping numbers with
+    for i in 0..63
+    {
+        let diagonal = north_east_ray << i;
+        for _ in 0..i % 8 // creates a mask to mask any wrapping numbers with
+        {
+            mask |= mask << 1;
+        }
+
+        res[i] = diagonal & !mask;
+    }
+
+    res
 }
 
 
@@ -220,7 +238,6 @@ fn knight_attacks(knight_bb: u64) -> u64
 /// - The number of possible moves at the specified depth.
 fn perft(depth: i32) -> i32
 {
-
     todo!();
 }
 

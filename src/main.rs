@@ -5,14 +5,11 @@ mod legalmoves; // legal move generation
 use board::{Board, draw_board}; // Import Board struct and PIECE_INDEX_MAP
 
 fn main() {
-    let board = Board::new();
-    let mut i = 0;
-    while i < 64
-    {
+    for i in (0..64).rev()
+    {        
         println!("{}",i);
         utils::draw_bb(utils::mask(i));
-        utils::draw_bb(legalmoves::KNIGHT_MOVES[i as usize]);
-        i+=1;
+        utils::draw_bb(legalmoves::RAY_ATTACKS[3][i as usize]);
     }
 }
 #[allow(dead_code)]
