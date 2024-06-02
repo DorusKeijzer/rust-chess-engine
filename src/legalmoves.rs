@@ -1,5 +1,5 @@
 use lazy_static::lazy_static;
-use crate::{board::{self, Board}, utils, Turn};
+use crate::{board::{self, Board}, utils::{self, draw_bb}, Turn};
 use std::ops::Index;
 use std::slice::SliceIndex;
 
@@ -92,18 +92,23 @@ fn north_east_rays()-> [u64;64]
 {
     let mut res: [u64; 64] = [0;64];
     let north_east_ray: u64 = 0x8040201008040200; // diagonal
-    let mut mask:u64 = 0x0101010101010100; // north facing ray, to mask wrapping numbers with
-    for i in 0..63
+
+    utils::draw_bb(north_east_ray);
+    for i in 0..64
     {
+        let mut mask:u64 = 0x0101010101010100; // north facing ray, to mask wrapping numbers with
         let diagonal = north_east_ray << i;
         for _ in 0..i % 8 // creates a mask to mask any wrapping numbers with
         {
             mask |= mask << 1;
         }
-
+        print!("{:?}", i);
+        utils::draw_bb(mask);
+        utils::draw_bb(diagonal);
+        
         res[i] = diagonal & !mask;
-    }
-
+    } 
+    
     res
 }
 

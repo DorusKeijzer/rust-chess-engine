@@ -7,9 +7,12 @@ use board::{Board, draw_board}; // Import Board struct and PIECE_INDEX_MAP
 fn main() {
     for i in (0..64).rev()
     {        
-        println!("{}",i);
-        utils::draw_bb(utils::mask(i));
-        utils::draw_bb(legalmoves::RAY_ATTACKS[3][i as usize]);
+        // println!("{}",i);
+        let mut draw = 0;
+        for j in 0..4{
+        draw |= legalmoves::RAY_ATTACKS[j][i as usize];
+        }
+        utils::draw_bb(draw)
     }
 }
 #[allow(dead_code)]
