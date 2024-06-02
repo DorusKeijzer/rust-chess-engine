@@ -41,6 +41,7 @@ pub fn init_ray_attacks() -> [[u64; 64]; 8]
     res[1] = north_rays();
     res[2] = north_east_rays();
     res[3] = east_rays();
+    res[4] = south_rays();
     res
 }
 
@@ -83,7 +84,20 @@ fn north_rays() -> [u64;64]
     for square in 0..64
     {
         res[square] = north; 
-        north <<= 1; // slide north facing ray left and (upwards upon wrap)
+        north <<= 1; // slide north facing ray left (and upwards upon wrap)
+    }
+    res
+}
+
+fn south_rays() -> [u64;64]
+{
+    let mut res: [u64; 64] = [0;64];
+    let mut south = 36170086419038336; // south facing ray
+    for square in (0..64).rev()
+    {
+        println!("{:?}", square);
+        res[square] = south; 
+        south >>= 1; // slide south facing ray left (and down upon wrap)
     }
     res
 }
@@ -93,7 +107,6 @@ fn north_east_rays()-> [u64;64]
     let mut res: [u64; 64] = [0;64];
     let north_east_ray: u64 = 0x8040201008040200; // diagonal
 
-    utils::draw_bb(north_east_ray);
     for i in 0..64
     {
         let mut mask:u64 = 0x0101010101010100; // north facing ray, to mask wrapping numbers with
@@ -102,9 +115,6 @@ fn north_east_rays()-> [u64;64]
         {
             mask |= mask << 1;
         }
-        print!("{:?}", i);
-        utils::draw_bb(mask);
-        utils::draw_bb(diagonal);
         
         res[i] = diagonal & !mask;
     } 
