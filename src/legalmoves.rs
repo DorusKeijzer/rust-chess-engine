@@ -204,7 +204,12 @@ fn init_queen_tables() -> [u64; 64] {
 /// Returns:
 /// - An array containing the rook moves for each square on the chessboard.
 fn init_rook_tables() -> [u64; 64] {
-    todo!()
+    let mut res: [u64; 64] = [0; 64];
+    for i in 0..64
+    {
+        res[i] = RAY_ATTACKS[1][i] |  RAY_ATTACKS[3][i] |  RAY_ATTACKS[5][i] |  RAY_ATTACKS[7][i]; 
+    }
+    res
 }
 
 /// Computes possible knight attacks from a given position.
