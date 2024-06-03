@@ -26,27 +26,27 @@ lazy_static! {
 
     /// Stores all the possible rook moves.
     /// `ROOK_MOVES[i]` holds the possible moves for a rook at square `i`
-    static ref ROOK_MOVES: [u64; 64] = init_rook_tables();
+    pub static ref ROOK_MOVES: [u64; 64] = init_rook_tables();
 
     /// Stores all the possible bishop moves.
     /// `BISHOP_MOVES[i]` holds the possible moves for a bishop at square `i`
-    static ref BISHOP_MOVES: [u64; 64] = init_bishop_tables();
+    pub static ref BISHOP_MOVES: [u64; 64] = init_bishop_tables();
 
     /// Stores all the possible queen moves.
     /// `QUEEN_MOVES[i]` holds the possible moves for a queen at square `i`
-    static ref QUEEN_MOVES: [u64; 64] = init_queen_tables();
+    pub static ref QUEEN_MOVES: [u64; 64] = init_queen_tables();
 }
 
 pub fn init_ray_attacks() -> [[u64; 64]; 8] {
     let mut res: [[u64; 64]; 8] = [[0; 64]; 8];
-    res[0] = north_west_rays();
-    res[1] = north_rays();
-    res[2] = north_east_rays();
-    res[3] = east_rays();
-    res[4] = south_east_rays();
-    res[5] = south_rays();
-    res[6] = south_west_rays();
-    res[7] = west_rays();
+    res[Direction::NorthWest as usize] = north_west_rays();
+    res[Direction::North as usize] = north_rays();
+    res[Direction::NorthEast as usize] = north_east_rays();
+    res[Direction::East as usize] = east_rays();
+    res[Direction::SouthEast as usize] = south_east_rays();
+    res[Direction::South as usize] = south_rays();
+    res[Direction::SouthWest as usize] = south_west_rays();
+    res[Direction::West as usize] = west_rays();
     res
 }
 
@@ -108,7 +108,6 @@ fn north_east_rays() -> [u64; 64] {
 fn south_west_rays() -> [u64; 64] {
     let mut res: [u64; 64] = [0; 64];
     let north_east_ray: u64 = 18049651735527937; // diagonal
-    utils::draw_bb(north_east_ray);
     for i in (0..64).rev() {
         let mut mask: u64 = 0x0101010101010101; // north facing ray, to mask wrapping numbers with
         let diagonal = north_east_ray >> 63 - i;
@@ -179,7 +178,7 @@ fn init_knight_tables() -> [u64; 64] {
 ///
 /// This function combines the bitboards of white pieces (pawns, knights, bishops, rooks, queens, kings)
 /// into a single bitboard and returns it.
-fn all_white(board: Board) -> u64 {
+fn all_white(board: &Board) -> u64 {
     let mut res: u64 = 0;
     for bitboard in &board.bitboards[0..6] {
         res |= bitboard; // ORs together all white boards
@@ -191,12 +190,16 @@ fn all_white(board: Board) -> u64 {
 ///
 /// This function combines the bitboards of black pieces (pawns, knights, bishops, rooks, queens, kings)
 /// into a single bitboard and returns it.
-fn all_black(board: Board) -> u64 {
+fn all_black(board: &Board) -> u64 {
     let mut res: u64 = 0;
     for bitboard in &board.bitboards[6..12] {
         res |= bitboard; // ORs together all black boards
     }
     res
+}
+
+pub fn occupied(board: &Board) -> u64 {
+    return all_black(board) | all_white(board);
 }
 
 /// Computes pseudo-legal moves for a knight on the given square.
@@ -205,10 +208,47 @@ fn all_black(board: Board) -> u64 {
 /// considering other pieces on the board and the turn's color.
 fn knight_pseudo_legal(board: Board, turn: Turn, square: usize) -> u64 {
     match turn {
-        Turn::Black => !all_black(board) & KNIGHT_MOVES[square],
-        Turn::White => !all_white(board) & KNIGHT_MOVES[square],
+        Turn::Black => !all_black(&board) & KNIGHT_MOVES[square],
+        Turn::White => !all_white(&board) & KNIGHT_MOVES[square],
     }
 }
+
+#[derive(Copy, Clone)]
+pub enum Direction {
+    NorthWest,
+    North,
+    NorthEast,
+    East,
+    SouthEast,
+    South,
+    SouthWest,
+    West,
+}
+
+pub fn get_positive_ray_attacks(occupied: u64, dir: Direction, square: usize) -> u64 {
+    let attacks = RAY_ATTACKS[dir as usize][square as usize];
+    let blocker = attacks & occupied;
+    if blocker != 0 {
+        let square = blocker.trailing_zeros();
+        attacks ^ RAY_ATTACKS[dir as usize][square as usize]
+    } else {
+        attacks
+    }
+}
+
+pub fn get_negative_ray_attacks(occupied: u64, dir: Direction, square: usize) -> u64 {
+    unsafe {
+        let attacks = RAY_ATTACKS[dir as usize][square as usize];
+        let blocker = attacks & occupied;
+        if blocker != 0 {
+            let square = 63- occupied.leading_zeros();
+            attacks ^ RAY_ATTACKS[dir as usize][square as usize]
+        } else {
+            attacks
+        }
+    }
+}
+
 
 /// Initializes the bishop move lookup table.
 ///

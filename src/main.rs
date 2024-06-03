@@ -3,16 +3,19 @@ mod legalmoves;
 mod utils; // utility functions // legal move generation
 
 use board::{draw_board, Board}; // Import Board struct and PIECE_INDEX_MAP
-
 fn main() {
-    for i in (0..64).rev() {
-        println!("{}", i);
-        let mut draw = 0;
-        for j in 0..8 {
-            draw |= legalmoves::RAY_ATTACKS[j][i as usize];
-        }
-        utils::draw_bb(draw)
-    }
+    let board = Board::new(Some("r1bk3r/p2pBpNp/n4n2/1p1NP2P/6P1/3P4/P1P1K3/q5b1 "));
+    draw_board(&board);
+    let occ = legalmoves::occupied(&board);
+    let mut p = legalmoves::get_positive_ray_attacks(occ, legalmoves::Direction::NorthWest, 25);
+    p |= legalmoves::get_positive_ray_attacks( occ, legalmoves::Direction::North, 25);
+    p |= legalmoves::get_positive_ray_attacks( occ, legalmoves::Direction::NorthEast, 25);
+    p |= legalmoves::get_positive_ray_attacks( occ, legalmoves::Direction::East, 25);
+    p |= legalmoves::get_negative_ray_attacks( occ, legalmoves::Direction::SouthEast, 25);
+    p |= legalmoves::get_negative_ray_attacks( occ, legalmoves::Direction::South, 25);
+    p |= legalmoves::get_negative_ray_attacks( occ, legalmoves::Direction::SouthWest, 25);
+    p |= legalmoves::get_negative_ray_attacks( occ, legalmoves::Direction::West, 25);
+    utils::draw_bb(p)
 }
 #[allow(dead_code)]
 struct Move {

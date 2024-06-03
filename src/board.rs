@@ -38,10 +38,14 @@ pub struct Board {
 }
 
 impl Board {
-    pub fn new() -> Self {
-        Self { bitboards: Box::new([0; 12]) }
+    pub fn new(fen_string: Option<&str>) -> Self {
+        let mut board = Self { bitboards: Box::new([0; 12]) };
+        if let Some(fen) = fen_string {
+            board.parse_fen(fen);
+        }
+        board
     }
-
+    
     #[allow(dead_code)]
     pub fn parse_fen(&mut self, fenstring : &str)
     {
