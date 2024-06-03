@@ -8,7 +8,7 @@ fn main() {
     for i in (0..64).rev() {
         println!("{}", i);
         let mut draw = 0;
-        for j in 0..7 {
+        for j in 0..8 {
             draw |= legalmoves::RAY_ATTACKS[j][i as usize];
         }
         utils::draw_bb(draw)

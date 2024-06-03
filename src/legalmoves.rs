@@ -43,14 +43,36 @@ pub fn init_ray_attacks() -> [[u64; 64]; 8] {
     res[1] = north_rays();
     res[2] = north_east_rays();
     res[3] = east_rays();
-    res[4] = south_rays();
-    // res[5] = south_west_rays();
-    res[6] = west_rays();
-    // res[7] = north_west_rays();
+    res[4] = south_east_rays();
+    res[5] = south_rays();
+
+    // res[6] = south_west_rays();
+    res[7] = west_rays();
     res
 }
 
+
 fn north_west_rays() -> [u64; 64] {
+    let mut res: [u64; 64] = [0; 64];
+    let north_west_ray: u64 = 72624976668147840 ; // diagonal
+    for row in (0..64).step_by(8) {
+        for col in (0..8) {
+            let mut mask: u64 = 0x0101010101010100; // north facing ray, to mask wrapping numbers with
+            let index = col + row;
+            let diagonal = north_west_ray << col + row;
+            for _ in 0..col {
+                mask |= mask << 1;
+            }
+
+            res[index as usize] = mask & diagonal;
+        }
+
+    }
+    res
+}
+
+
+fn south_east_rays() -> [u64; 64] {
     let mut res: [u64; 64] = [0; 64];
     let north_west_ray: u64 = 0x102040810204000; // diagonal
     for row in (0..64).step_by(8).rev() {
@@ -58,7 +80,7 @@ fn north_west_rays() -> [u64; 64] {
             let mut mask: u64 = 0x8080808080808080; // north facing ray, to mask wrapping numbers with
 
             let diagonal = north_west_ray >> col + row;
-            for p in 0..col {
+            for _ in 0..col {
                 mask |= mask >> 1;
             }
             res[63 - ((col % 8) + row)] = mask & diagonal;
@@ -67,6 +89,29 @@ fn north_west_rays() -> [u64; 64] {
 
     res
 }
+
+fn north_east_rays() -> [u64; 64] {
+    let mut res: [u64; 64] = [0; 64];
+    let north_east_ray: u64 = 0x8040201008040200; // diagonal
+
+    for i in 0..64 {
+        let mut mask: u64 = 0x0101010101010100; // north facing ray, to mask wrapping numbers with
+        let diagonal = north_east_ray << i;
+        for _ in 0..i % 8
+        // creates a mask to mask any wrapping numbers with
+        {
+            mask |= mask << 1;
+        }
+
+        res[i] = diagonal & !mask;
+    }
+
+    res
+}
+
+
+
+
 fn east_rays() -> [u64; 64] {
     let mut res = [0; 64];
     for i in 0..64 {
@@ -97,31 +142,12 @@ fn south_rays() -> [u64; 64] {
     let mut res: [u64; 64] = [0; 64];
     let mut south = 36170086419038336; // south facing ray
     for square in (0..64).rev() {
-        println!("{:?}", square);
         res[square] = south;
         south >>= 1; // slide south facing ray left (and down upon wrap)
     }
     res
 }
 
-fn north_east_rays() -> [u64; 64] {
-    let mut res: [u64; 64] = [0; 64];
-    let north_east_ray: u64 = 0x8040201008040200; // diagonal
-
-    for i in 0..64 {
-        let mut mask: u64 = 0x0101010101010100; // north facing ray, to mask wrapping numbers with
-        let diagonal = north_east_ray << i;
-        for _ in 0..i % 8
-        // creates a mask to mask any wrapping numbers with
-        {
-            mask |= mask << 1;
-        }
-
-        res[i] = diagonal & !mask;
-    }
-
-    res
-}
 
 /// Initializes the knight move lookup table.
 ///
