@@ -45,16 +45,14 @@ pub fn init_ray_attacks() -> [[u64; 64]; 8] {
     res[3] = east_rays();
     res[4] = south_east_rays();
     res[5] = south_rays();
-
-    // res[6] = south_west_rays();
+    res[6] = south_west_rays();
     res[7] = west_rays();
     res
 }
 
-
 fn north_west_rays() -> [u64; 64] {
     let mut res: [u64; 64] = [0; 64];
-    let north_west_ray: u64 = 72624976668147840 ; // diagonal
+    let north_west_ray: u64 = 72624976668147840; // diagonal
     for row in (0..64).step_by(8) {
         for col in (0..8) {
             let mut mask: u64 = 0x0101010101010100; // north facing ray, to mask wrapping numbers with
@@ -66,11 +64,9 @@ fn north_west_rays() -> [u64; 64] {
 
             res[index as usize] = mask & diagonal;
         }
-
     }
     res
 }
-
 
 fn south_east_rays() -> [u64; 64] {
     let mut res: [u64; 64] = [0; 64];
@@ -109,8 +105,23 @@ fn north_east_rays() -> [u64; 64] {
     res
 }
 
+fn south_west_rays() -> [u64; 64] {
+    let mut res: [u64; 64] = [0; 64];
+    let north_east_ray: u64 = 18049651735527937; // diagonal
+    utils::draw_bb(north_east_ray);
+    for i in (0..64).rev() {
+        let mut mask: u64 = 0x0101010101010101; // north facing ray, to mask wrapping numbers with
+        let diagonal = north_east_ray >> 63 - i;
+        for _ in 0..i % 8
+        // creates a mask to mask any wrapping numbers with
+        {
+            mask |= mask << 1;
+        }
+        res[i as usize] = diagonal & mask;
+    }
 
-
+    res
+}
 
 fn east_rays() -> [u64; 64] {
     let mut res = [0; 64];
@@ -147,7 +158,6 @@ fn south_rays() -> [u64; 64] {
     }
     res
 }
-
 
 /// Initializes the knight move lookup table.
 ///
@@ -208,7 +218,11 @@ fn knight_pseudo_legal(board: Board, turn: Turn, square: usize) -> u64 {
 /// Returns:
 /// - An array containing the bishop moves for each square on the chessboard.
 fn init_bishop_tables() -> [u64; 64] {
-    todo!()
+    let mut res: [u64; 64] = [0; 64];
+    for i in 0..64 {
+        res[i] = RAY_ATTACKS[0][i] | RAY_ATTACKS[2][i] | RAY_ATTACKS[4][i] | RAY_ATTACKS[6][i];
+    }
+    res
 }
 
 /// Initializes the queen move lookup table.
@@ -219,7 +233,14 @@ fn init_bishop_tables() -> [u64; 64] {
 /// Returns:
 /// - An array containing the queen moves for each square on the chessboard.
 fn init_queen_tables() -> [u64; 64] {
-    todo!()
+    let mut res: [u64; 64] = [0; 64];
+    for i in 0..64 {
+        for j in 0..9 {
+            res[i] |= RAY_ATTACKS[j][i];
+        }
+    }
+
+    res
 }
 
 /// Initializes the rook move lookup table.
@@ -231,9 +252,8 @@ fn init_queen_tables() -> [u64; 64] {
 /// - An array containing the rook moves for each square on the chessboard.
 fn init_rook_tables() -> [u64; 64] {
     let mut res: [u64; 64] = [0; 64];
-    for i in 0..64
-    {
-        res[i] = RAY_ATTACKS[1][i] |  RAY_ATTACKS[3][i] |  RAY_ATTACKS[5][i] |  RAY_ATTACKS[7][i]; 
+    for i in 0..64 {
+        res[i] = RAY_ATTACKS[1][i] | RAY_ATTACKS[3][i] | RAY_ATTACKS[5][i] | RAY_ATTACKS[7][i];
     }
     res
 }
