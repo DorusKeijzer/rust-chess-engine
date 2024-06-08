@@ -56,13 +56,13 @@ fn north_west_rays() -> [u64; 64] {
     let north_west_ray: u64 = 72624976668147840; // diagonal
     for row in (0..64).step_by(8) {
         for col in (0..8) {
-            let mut mask: u64 = 0x0101010101010100; // north facing ray, to mask wrapping numbers with
+            let mut mask: u64 = 0x0101010101010101; // north facing ray, to mask wrapping numbers with
+
             let index = col + row;
             let diagonal = north_west_ray << col + row;
-            for _ in 0..col {
+            for _ in 0..(col-1) {
                 mask |= mask << 1;
             }
-
             res[index as usize] = mask & diagonal;
         }
     }
@@ -112,7 +112,7 @@ fn south_west_rays() -> [u64; 64] {
     for i in (0..64).rev() {
         let mut mask: u64 = 0x0101010101010101; // north facing ray, to mask wrapping numbers with
         let diagonal = north_east_ray >> 63 - i;
-        for _ in 0..i % 8
+        for _ in 0..(i) % 8
         // creates a mask to mask any wrapping numbers with
         {
             mask |= mask << 1;
@@ -179,7 +179,7 @@ fn init_knight_tables() -> [u64; 64] {
 ///
 /// This function combines the bitboards of white pieces (pawns, knights, bishops, rooks, queens, kings)
 /// into a single bitboard and returns it.
-fn all_white(board: &Board) -> u64 {
+pub fn all_white(board: &Board) -> u64 {
     let mut res: u64 = 0;
     for bitboard in &board.bitboards[0..6] {
         res |= bitboard; // ORs together all white boards
@@ -191,7 +191,7 @@ fn all_white(board: &Board) -> u64 {
 ///
 /// This function combines the bitboards of black pieces (pawns, knights, bishops, rooks, queens, kings)
 /// into a single bitboard and returns it.
-fn all_black(board: &Board) -> u64 {
+pub fn all_black(board: &Board) -> u64 {
     let mut res: u64 = 0;
     for bitboard in &board.bitboards[6..12] {
         res |= bitboard; // ORs together all black boards
@@ -245,16 +245,21 @@ fn legal_moves(board: &Board, turn: &Turn, piece: Piece) -> Vec<Move> {
 fn pseudo_legal_moves(board: &Board, turn: &Turn, piece: Piece) -> Vec<Move> {
     let mut result = vec![];
     let bb_index = bitboard_from_piece_and_turn(turn, piece);
+    let own = match turn {
+        Turn::Black => all_black(board),
+        Turn::White => all_white(board),
+    };
 
     for square in BitIter(board.bitboards[bb_index]) {
         let legal_moves = match piece {
             Piece::Pawn => 0,
-            Piece::Rook => rook_attacks(occupied(board), square as usize),
-            Piece::Bishop => bishop_attacks(occupied(board), square as usize),
+            Piece::Rook => rook_attacks(occupied(board), own, square as usize),
+            Piece::Bishop => bishop_attacks(occupied(board), own, square as usize),
             Piece::Knight => knight_square_pseudo_legal(board, turn, square as usize),
             Piece::King => 0,
-            Piece::Queen => queen_attacks(occupied(board), square as usize),
+            Piece::Queen => queen_attacks(occupied(board), own, square as usize),
         };
+
         result.extend(pseudo_legal_to_moves(
             board,
             legal_moves,
@@ -373,7 +378,7 @@ pub enum Piece {
     Queen,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum Direction {
     NorthWest,
     North,
@@ -385,22 +390,24 @@ pub enum Direction {
     West,
 }
 
-fn bishop_attacks(occupied: u64, square: usize) -> u64 {
-    return get_positive_ray_attacks(occupied, Direction::NorthWest, square)
+pub fn bishop_attacks(occupied: u64, own: u64, square: usize) -> u64 {
+    return (get_positive_ray_attacks(occupied, Direction::NorthWest, square)
+        | get_positive_ray_attacks(occupied, Direction::NorthEast, square)
         | get_negative_ray_attacks(occupied, Direction::SouthWest, square)
-        | get_negative_ray_attacks(occupied, Direction::SouthEast, square)
-        | get_positive_ray_attacks(occupied, Direction::NorthEast, square);
+        | get_negative_ray_attacks(occupied, Direction::SouthEast, square)) 
+        & !own;
 }
 
-fn rook_attacks(occupied: u64, square: usize) -> u64 {
-    return get_positive_ray_attacks(occupied, Direction::North, square)
+pub fn rook_attacks(occupied: u64, own: u64, square: usize) -> u64 {
+    return (get_positive_ray_attacks(occupied, Direction::North, square)
+        | get_positive_ray_attacks(occupied, Direction::East, square)
         | get_negative_ray_attacks(occupied, Direction::West, square)
-        | get_negative_ray_attacks(occupied, Direction::South, square)
-        | get_positive_ray_attacks(occupied, Direction::East, square);
+        | get_negative_ray_attacks(occupied, Direction::South, square))
+        & !own;
 }
 
-fn queen_attacks(occupied: u64, square: usize) -> u64 {
-    return rook_attacks(occupied, square) | bishop_attacks(occupied, square);
+pub fn queen_attacks(occupied: u64, own: u64, square: usize) -> u64 {
+    return rook_attacks(occupied, own, square) | bishop_attacks(occupied, own, square);
 }
 
 pub fn get_positive_ray_attacks(occupied: u64, dir: Direction, square: usize) -> u64 {
@@ -415,10 +422,20 @@ pub fn get_positive_ray_attacks(occupied: u64, dir: Direction, square: usize) ->
 }
 
 pub fn get_negative_ray_attacks(occupied: u64, dir: Direction, square: usize) -> u64 {
+    println!("{:?}", dir);
     let attacks = RAY_ATTACKS[dir as usize][square as usize];
+    println!("attackers");
+    utils::draw_bb(attacks);
     let blocker = attacks & occupied;
+    println!("blocker");
+    utils::draw_bb(blocker);
     if blocker != 0 {
-        let square = 63 - occupied.leading_zeros();
+        let square = 63 - blocker.leading_zeros() as usize;
+        println!("square");
+        utils::draw_bb(utils::mask(square as u8));
+        println!("attacks xor ray attacks");
+        utils::draw_bb(        attacks ^ RAY_ATTACKS[dir as usize][square as usize]
+        );
         attacks ^ RAY_ATTACKS[dir as usize][square as usize]
     } else {
         attacks
@@ -498,10 +515,9 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, turn: &Turn) {
     let bb_index = bitboard_from_piece_and_turn(turn, chess_move.piece);
 
     // undoes a captured piece
-    if chess_move.captured.is_some()
-    {
+    if chess_move.captured.is_some() {
         let captured_bb = bitboard_from_piece_and_turn(turn, chess_move.captured.unwrap());
-        bb_to_update[captured_bb] ^= utils::mask(chess_move.to) ;
+        bb_to_update[captured_bb] ^= utils::mask(chess_move.to);
     }
     bb_to_update[bb_index] ^= utils::mask(chess_move.to);
     bb_to_update[bb_index] ^= utils::mask(chess_move.from);
@@ -510,12 +526,11 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, turn: &Turn) {
 pub fn make_move(board: &mut Board, chess_move: &Move, turn: &Turn) {
     let bb_to_update = &mut board.bitboards;
     let bb_index = bitboard_from_piece_and_turn(turn, chess_move.piece);
-    
+
     // if a piece is captured, find the corresponding bitboard and remove the piece there
-    if chess_move.captured.is_some()
-    {
+    if chess_move.captured.is_some() {
         let captured_bb = bitboard_from_piece_and_turn(turn, chess_move.captured.unwrap());
-        bb_to_update[captured_bb] ^= utils::mask(chess_move.to) ;
+        bb_to_update[captured_bb] ^= utils::mask(chess_move.to);
     }
 
     bb_to_update[bb_index] ^= utils::mask(chess_move.to);
@@ -537,13 +552,14 @@ pub fn make_move(board: &mut Board, chess_move: &Move, turn: &Turn) {
 pub fn perft(board: &mut Board, turn: &Turn, depth: i32) -> i32 {
     let moves = generate_legal_moves(board, turn);
     let mut num_moves: i32 = moves.len() as i32;
-
+    for m in &moves {
+        println!("{}", m);
+    }
     if depth == 1 {
         return num_moves;
     }
     for m in moves {
         make_move(board, &m, turn);
-        // board.draw_board();
         num_moves += perft(board, turn, depth - 1);
         unmake_move(board, &m, turn)
     }

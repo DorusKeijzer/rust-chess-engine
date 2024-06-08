@@ -4,26 +4,23 @@ mod utils; // utility functions // legal move generation
 
 use board::Board;
 use legalmoves::make_move;
+use legalmoves::rook_attacks;
 use legalmoves::unmake_move;
+use utils::draw_bb;
 fn main() {
-    let mut board: Board = Board::new(Some("Rn6/8/8/8/8/8/8/8"));
-    let chess_move = legalmoves::Move {
-        from: 56,
-        to: 57,
-        piece: legalmoves::Piece::Rook,
-        captured: Some(legalmoves::Piece::Knight),
-    };
-    println!("Before");
+    let mut board: Board = Board::new(Some("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"));
     board.draw_board();
-    make_move(&mut board, &chess_move, &Turn::White);
-    println!("Make move");
+    let own = legalmoves::all_white(&board);
+    utils::draw_bb(legalmoves::rook_attacks(legalmoves::occupied(&board), own, 3));
+    utils::draw_bb(legalmoves::bishop_attacks(legalmoves::occupied(&board), own, 3));
+    // for i in 0..32
+    // {
+    //     println!("{i}");
+    //     utils::draw_bb(legalmoves::RAY_ATTACKS[0][i])
+    // }
+    let p = legalmoves::perft(&mut board, &Turn::White, 1);
+    println!("{:?}", p);
 
-    board.draw_board();
-    unmake_move(&mut board, &chess_move, &Turn::White);
-    println!("Undo");
-
-    board.draw_board();
-    
 }
 
 #[derive(PartialEq)]
