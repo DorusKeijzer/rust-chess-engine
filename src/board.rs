@@ -45,16 +45,30 @@ impl Board {
         }
         board
     }
-    
+ 
     #[allow(dead_code)]
     pub fn parse_fen(&mut self, fenstring : &str)
     {
-        // to iterate over the square indices (backwards)
+        println!("{}", fenstring);
+        // because fen strings do not obey little endian notation, 
+        // we have to mirror the substrings of each rank
+        let split_fen = fenstring.split("/");
+        let mut reverse_fen = vec![];
+
+        for split in split_fen {
+            let reversed: String = split.chars().rev().collect();
+            reverse_fen.push(reversed);
+        }
+    
+        // If you want to join the reversed parts into a single string separated by spaces, you can do:
+        let joined_reverse_fen = reverse_fen.join("/");
+
+        // to iterate over the square indices (backwards, starting at 63)
         let mut index = 64;  
-        for character in fenstring.chars()
+        for character in joined_reverse_fen.chars()
         {
             match character {
-                '0'..='9' =>{ index -= character.to_digit(10).unwrap_or(0)},
+                '0'..='8' =>{ index -= character.to_digit(10).unwrap_or(0)},
                 'P' | 'R' | 'K' | 'N' | 'Q' | 'B' | 'p' | 'r' | 'k' | 'n' | 'q' | 'b' => {
                     // iterates backwards over piece indices
                     self.bitboards[PIECE_INDEX_MAP[&character]] |= 1 << (index - 1);

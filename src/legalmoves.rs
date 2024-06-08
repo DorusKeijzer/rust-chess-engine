@@ -37,6 +37,25 @@ lazy_static! {
     pub static ref QUEEN_MOVES: [u64; 64] = init_queen_tables();
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Move {
+    pub from: u8,               // Source square (0-63)
+    pub to: u8,                 // Destination square (0-63)
+    pub promotion: Option<Piece>, // Optional promotion piece
+    pub captured: Option<Piece>, // Optional captured piece
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Piece
+{
+    Pawn,
+    Rook,
+    Bishop,
+    Knight,
+    King, 
+    Queen
+}
+
 pub fn init_ray_attacks() -> [[u64; 64]; 8] {
     let mut res: [[u64; 64]; 8] = [[0; 64]; 8];
     res[Direction::NorthWest as usize] = north_west_rays();
