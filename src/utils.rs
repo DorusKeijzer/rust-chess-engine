@@ -106,6 +106,12 @@ impl Iterator for BitIter {
     }
 }
 
+// Assuming you have a method like this
+pub fn square_to_algebraic(square: u8) -> String {
+    let file = (square % 8) as u8 + b'a';
+    let rank = (7-(square / 8)) as u8 + b'1';
+    format!("{}{}", file as char, rank as char)
+}
 
 
 

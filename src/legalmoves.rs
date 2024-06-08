@@ -4,6 +4,7 @@ use crate::{
     Turn,
 };
 use lazy_static::lazy_static;
+use std::fmt;
 use std::ops::Index;
 use std::slice::SliceIndex;
 
@@ -36,7 +37,6 @@ lazy_static! {
     /// `QUEEN_MOVES[i]` holds the possible moves for a queen at square `i`
     pub static ref QUEEN_MOVES: [u64; 64] = init_queen_tables();
 }
-
 
 pub fn init_ray_attacks() -> [[u64; 64]; 8] {
     let mut res: [[u64; 64]; 8] = [[0; 64]; 8];
@@ -203,29 +203,47 @@ pub fn occupied(board: &Board) -> u64 {
     return all_black(board) | all_white(board);
 }
 
-pub fn generate_legal_moves(board: &Board, turn: &Turn) -> Vec<Move>
-{
+pub fn generate_legal_moves(board: &Board, turn: &Turn) -> Vec<Move> {
     return knight_moves(board, turn);
-
 }
 
-fn knight_moves(board:&Board, turn: &Turn) -> Vec<Move>
-{
+pub fn make_move(mut board: &mut Board, chess_move: &Move, turn: &Turn) {
+    let mut bb_to_update = &mut board.bitboards;
+
+    // offset is used for getting the relevant bitboard in the match statement below
+    let offset = if *turn == Turn::Black { 6 } else { 0 };
+    let mut index = 0;
+    match chess_move.piece {
+        Piece::Pawn => index = 0 + offset,
+        Piece::Rook => index = 1 + offset,
+        Piece::King => index = 2 + offset,
+        Piece::Knight => index = 3 + offset,
+        Piece::Queen => index = 4 + offset,
+        Piece::Bishop => index = 5 + offset,
+    }
+
+    bb_to_update[index] ^= utils::mask(chess_move.to);
+    bb_to_update[index] ^= utils::mask(chess_move.from);
+}
+
+fn knight_moves(board: &Board, turn: &Turn) -> Vec<Move> {
     let mut result = vec![];
-    let mut bb = 0; 
-    match turn 
-    {
-        Turn::Black => bb = board.bitboards[8],
-        Turn::White => bb = board.bitboards[2],
+    let mut bb: u64 = 0;
+    match turn {
+        Turn::Black => bb = board.bitboards[9],
+        Turn::White => bb = board.bitboards[3],
+    }
+    for pos in BitIter(bb) {
+        result.extend(pseudo_legal_to_moves(
+            knight_square_pseudo_legal(board, turn, pos as usize),
+            pos as u8,
+            turn,
+            Piece::Knight,
+        ))
     }
 
-    for pos in BitIter(bb){
-        result.extend(pseudo_legal_to_moves(knight_square_pseudo_legal(board, turn, pos as usize), pos as u8, turn, Piece::Knight))
-    }
-    println!("{:?}", result);
-    return result
+    return result;
 }
-
 
 /// Computes pseudo-legal moves for a knight on the given square.
 ///
@@ -238,47 +256,53 @@ fn knight_square_pseudo_legal(board: &Board, turn: &Turn, square: usize) -> u64 
     }
 }
 
-fn pseudo_legal_to_moves(bitboard: u64, from_square: u8, turn: &Turn, piece: Piece) -> Vec<Move>
-{
+fn pseudo_legal_to_moves(bitboard: u64, from_square: u8, turn: &Turn, piece: Piece) -> Vec<Move> {
     let mut moves = Vec::new();
     let mut bitboard = bitboard;
-    while bitboard != 0
-    {
+    while bitboard != 0 {
         let to_square = bitboard.trailing_zeros() as u8;
         {
-            moves.push(Move{
-                    from: from_square, 
-                    to: to_square,
-                    piece: Some(piece)
-                }
-            )
+            moves.push(Move {
+                from: from_square,
+                to: to_square,
+                piece: piece,
+            })
         }
-        bitboard &= bitboard -1;
+        bitboard &= bitboard - 1;
     }
-    println!{"{:?}", moves}
     moves
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Move {
-    pub from: u8,               // Source square (0-63)
-    pub to: u8,                 // Destination square (0-63)
-    pub piece: Option<Piece>,
+    pub from: u8, // Source square (0-63)
+    pub to: u8,   // Destination square (0-63)
+    pub piece: Piece,
     // pub piece: Option<Piece>, // Optional promotion piece
     // pub captured: Option<Piece>, // Optional captured piece
 }
 
+impl fmt::Display for Move {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?} from {} to {} ",
+            self.piece,
+            utils::square_to_algebraic(self.from),
+            utils::square_to_algebraic(self.to),
+        )
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
-pub enum Piece
-{
+pub enum Piece {
     Pawn,
     Rook,
     Bishop,
     Knight,
-    King, 
-    Queen
+    King,
+    Queen,
 }
-
 
 #[derive(Copy, Clone)]
 pub enum Direction {
@@ -304,18 +328,15 @@ pub fn get_positive_ray_attacks(occupied: u64, dir: Direction, square: usize) ->
 }
 
 pub fn get_negative_ray_attacks(occupied: u64, dir: Direction, square: usize) -> u64 {
-    unsafe {
-        let attacks = RAY_ATTACKS[dir as usize][square as usize];
-        let blocker = attacks & occupied;
-        if blocker != 0 {
-            let square = 63- occupied.leading_zeros();
-            attacks ^ RAY_ATTACKS[dir as usize][square as usize]
-        } else {
-            attacks
-        }
+    let attacks = RAY_ATTACKS[dir as usize][square as usize];
+    let blocker = attacks & occupied;
+    if blocker != 0 {
+        let square = 63 - occupied.leading_zeros();
+        attacks ^ RAY_ATTACKS[dir as usize][square as usize]
+    } else {
+        attacks
     }
 }
-
 
 /// Initializes the bishop move lookup table.
 ///
@@ -385,6 +406,15 @@ fn knight_attacks(knight_bb: u64) -> u64 {
     (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8)
 }
 
+fn unmake_move(mut board: &mut Board, chess_move: &Move, turn: &Turn) {
+    let move_back = Move {
+        from: chess_move.from,
+        to: chess_move.to,
+        piece: chess_move.piece,
+    };
+    make_move(board, chess_move, turn)
+}
+
 #[allow(dead_code)]
 #[allow(unused_variables)]
 /// Performs perft (Performance Test) for a given depth.
@@ -397,8 +427,20 @@ fn knight_attacks(knight_bb: u64) -> u64 {
 ///
 /// Returns:
 /// - The number of possible moves at the specified depth.
-fn perft(depth: i32) -> i32 {
-    todo!();
+pub fn perft(board: &mut Board, turn: &Turn, depth: i32) -> i32 {
+    let moves = generate_legal_moves(board, turn);
+    let mut num_moves: i32 = moves.len() as i32;
+
+    if depth == 1 {
+        return num_moves;
+    }
+    for m in moves {
+        make_move(board, &m, turn);
+        // board.draw_board();
+        num_moves += perft(board, turn, depth - 1);
+        unmake_move(board, &m, turn)
+    }
+    return num_moves;
 }
 
 #[cfg(test)]
@@ -407,10 +449,12 @@ mod tests {
 
     #[test]
     fn perft_test() {
-        assert_eq!(perft(1), 20);
-        assert_eq!(perft(2), 400);
-        assert_eq!(perft(3), 8902);
-        assert_eq!(perft(4), 197_281);
-        assert_eq!(perft(5), 4_865_609);
+        let mut board: Board = Board::new(Some("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"));
+        let turn: Turn = Turn::White;
+        assert_eq!(perft(&mut board, &turn, 1), 20);
+        assert_eq!(perft(&mut board, &turn, 2), 400);
+        assert_eq!(perft(&mut board, &turn, 3), 8902);
+        assert_eq!(perft(&mut board, &turn, 4), 197_281);
+        assert_eq!(perft(&mut board, &turn, 5), 4_865_609);
     }
 }
