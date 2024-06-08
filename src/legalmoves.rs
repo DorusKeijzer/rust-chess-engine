@@ -1,6 +1,6 @@
 use crate::{
     board::{self, Board},
-    utils::{self, draw_bb, BitIter},
+    utils::{self, draw_bb, find_bitboard, BitIter},
     Turn,
 };
 use lazy_static::lazy_static;
@@ -211,7 +211,7 @@ pub fn generate_legal_moves(board: &Board, turn: &Turn) -> Vec<Move> {
     result.extend(legal_moves(board, turn, Piece::King));
     result.extend(legal_moves(board, turn, Piece::Knight));
     result.extend(legal_moves(board, turn, Piece::Queen));
-    return result
+    return result;
 }
 
 fn bitboard_from_piece_and_turn(turn: &Turn, piece: Piece) -> usize {
@@ -226,9 +226,20 @@ fn bitboard_from_piece_and_turn(turn: &Turn, piece: Piece) -> usize {
     }
 }
 
-fn legal_moves(board: &Board, turn: &Turn, piece: Piece) -> Vec<Move>
-{
-    return pseudo_legal_moves(board, turn, piece)
+fn piece_from_bitboard_index(bb_index: u8) -> Option<Piece> {
+    match bb_index % 6 {
+        0 => Some(Piece::Pawn),
+        1 => Some(Piece::Rook),
+        2 => Some(Piece::King),
+        3 => Some(Piece::Knight),
+        4 => Some(Piece::Queen),
+        5 => Some(Piece::Bishop),
+        _ => None,
+    }
+}
+
+fn legal_moves(board: &Board, turn: &Turn, piece: Piece) -> Vec<Move> {
+    return pseudo_legal_moves(board, turn, piece);
 }
 
 fn pseudo_legal_moves(board: &Board, turn: &Turn, piece: Piece) -> Vec<Move> {
@@ -244,8 +255,8 @@ fn pseudo_legal_moves(board: &Board, turn: &Turn, piece: Piece) -> Vec<Move> {
             Piece::King => 0,
             Piece::Queen => queen_attacks(occupied(board), square as usize),
         };
-
         result.extend(pseudo_legal_to_moves(
+            board,
             legal_moves,
             square as u8,
             turn,
@@ -265,6 +276,7 @@ fn knight_moves(board: &Board, turn: &Turn) -> Vec<Move> {
     }
     for pos in BitIter(bb) {
         result.extend(pseudo_legal_to_moves(
+            board,
             knight_square_pseudo_legal(board, turn, pos as usize),
             pos as u8,
             turn,
@@ -286,19 +298,46 @@ fn knight_square_pseudo_legal(board: &Board, turn: &Turn, square: usize) -> u64 
     }
 }
 
-fn pseudo_legal_to_moves(bitboard: u64, from_square: u8, turn: &Turn, piece: Piece) -> Vec<Move> {
+fn bitboard_index_from_square(board: Board, square: u8) -> Option<u8> {
+    for i in 0..8 {
+        if board.bitboards[i] ^ utils::mask(square) != 0 {
+            return Some(i as u8);
+        }
+    }
+    return None;
+}
+
+fn pseudo_legal_to_moves(
+    board: &Board,
+    bitboard: u64,
+    from_square: u8,
+    turn: &Turn,
+    piece: Piece,
+) -> Vec<Move> {
     let mut moves = Vec::new();
     let mut bitboard = bitboard;
-    while bitboard != 0 {
-        let to_square = bitboard.trailing_zeros() as u8;
+
+    let opps = match turn {
+        Turn::Black => all_white(board),
+        Turn::White => all_black(board),
+    };
+
+    for to_square in BitIter(bitboard) {
+        // finds the intersection between the pseudo legal moves and the opponents pieces
+        let captured_bb = find_bitboard(board, to_square as u8);
+        let mut captured_piece = None;
+
+        if let Some(bb_index) = captured_bb {
+            captured_piece = piece_from_bitboard_index(bb_index as u8);
+        }
         {
             moves.push(Move {
                 from: from_square,
-                to: to_square,
+                to: to_square as u8,
                 piece: piece,
+                captured: captured_piece,
             })
         }
-        bitboard &= bitboard - 1;
     }
     moves
 }
@@ -308,8 +347,8 @@ pub struct Move {
     pub from: u8, // Source square (0-63)
     pub to: u8,   // Destination square (0-63)
     pub piece: Piece,
-    // pub piece: Option<Piece>, // Optional promotion piece
-    // pub captured: Option<Piece>, // Optional captured piece
+    // pub promotion: Option<Piece>, // Optional promotion piece
+    pub captured: Option<Piece>, // Optional captured piece
 }
 
 impl fmt::Display for Move {
@@ -454,19 +493,30 @@ fn knight_attacks(knight_bb: u64) -> u64 {
     (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8)
 }
 
-fn unmake_move(mut board: &mut Board, chess_move: &Move, turn: &Turn) {
-    let move_back = Move {
-        from: chess_move.from,
-        to: chess_move.to,
-        piece: chess_move.piece,
-    };
-    make_move(board, chess_move, turn)
+pub fn unmake_move(board: &mut Board, chess_move: &Move, turn: &Turn) {
+    let bb_to_update = &mut board.bitboards;
+    let bb_index = bitboard_from_piece_and_turn(turn, chess_move.piece);
+
+    // undoes a captured piece
+    if chess_move.captured.is_some()
+    {
+        let captured_bb = bitboard_from_piece_and_turn(turn, chess_move.captured.unwrap());
+        bb_to_update[captured_bb] ^= utils::mask(chess_move.to) ;
+    }
+    bb_to_update[bb_index] ^= utils::mask(chess_move.to);
+    bb_to_update[bb_index] ^= utils::mask(chess_move.from);
 }
 
-pub fn make_move(mut board: &mut Board, chess_move: &Move, turn: &Turn) {
-    let mut bb_to_update = &mut board.bitboards;
-
-    let mut bb_index = bitboard_from_piece_and_turn(turn, chess_move.piece);
+pub fn make_move(board: &mut Board, chess_move: &Move, turn: &Turn) {
+    let bb_to_update = &mut board.bitboards;
+    let bb_index = bitboard_from_piece_and_turn(turn, chess_move.piece);
+    
+    // if a piece is captured, find the corresponding bitboard and remove the piece there
+    if chess_move.captured.is_some()
+    {
+        let captured_bb = bitboard_from_piece_and_turn(turn, chess_move.captured.unwrap());
+        bb_to_update[captured_bb] ^= utils::mask(chess_move.to) ;
+    }
 
     bb_to_update[bb_index] ^= utils::mask(chess_move.to);
     bb_to_update[bb_index] ^= utils::mask(chess_move.from);
