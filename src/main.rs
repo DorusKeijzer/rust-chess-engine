@@ -16,7 +16,7 @@ fn main() {
     p |= legalmoves::get_negative_ray_attacks( occ, legalmoves::Direction::SouthWest, 25);
     p |= legalmoves::get_negative_ray_attacks( occ, legalmoves::Direction::West, 25);
     utils::draw_bb(p);
-
+    legalmoves::generate_legal_moves(&board, &Turn::White);
 }
 #[allow(dead_code)]
 struct Move {

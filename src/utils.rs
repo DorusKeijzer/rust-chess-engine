@@ -82,6 +82,32 @@ pub fn move_piece(bitboard: &mut u64, to_index: u8, from_index: u8) -> ()
     *bitboard ^= get_square(from_index).unwrap();
 }
 
+pub struct BitIter(pub u64);
+
+impl BitIter {
+    pub fn new(bitboard: u64) -> Self {
+        BitIter(bitboard)
+    }
+}
+
+impl Iterator for BitIter {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.0 == 0 {
+            None
+        } else {
+            // Isolate the rightmost 1-bit
+            let r = self.0.trailing_zeros();
+            // Remove the rightmost 1-bit
+            self.0 &= self.0 - 1;
+            Some(r)
+        }
+    }
+}
+
+
+
 
 #[allow(dead_code)]
 pub fn draw_bb(bb: u64)

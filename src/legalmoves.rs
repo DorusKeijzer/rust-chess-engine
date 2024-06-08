@@ -1,6 +1,6 @@
 use crate::{
     board::{self, Board},
-    utils::{self, draw_bb},
+    utils::{self, draw_bb, BitIter},
     Turn,
 };
 use lazy_static::lazy_static;
@@ -37,24 +37,6 @@ lazy_static! {
     pub static ref QUEEN_MOVES: [u64; 64] = init_queen_tables();
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Move {
-    pub from: u8,               // Source square (0-63)
-    pub to: u8,                 // Destination square (0-63)
-    pub promotion: Option<Piece>, // Optional promotion piece
-    pub captured: Option<Piece>, // Optional captured piece
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Piece
-{
-    Pawn,
-    Rook,
-    Bishop,
-    Knight,
-    King, 
-    Queen
-}
 
 pub fn init_ray_attacks() -> [[u64; 64]; 8] {
     let mut res: [[u64; 64]; 8] = [[0; 64]; 8];
@@ -221,16 +203,82 @@ pub fn occupied(board: &Board) -> u64 {
     return all_black(board) | all_white(board);
 }
 
+pub fn generate_legal_moves(board: &Board, turn: &Turn) -> Vec<Move>
+{
+    return knight_moves(board, turn);
+
+}
+
+fn knight_moves(board:&Board, turn: &Turn) -> Vec<Move>
+{
+    let mut result = vec![];
+    let mut bb = 0; 
+    match turn 
+    {
+        Turn::Black => bb = board.bitboards[8],
+        Turn::White => bb = board.bitboards[2],
+    }
+
+    for pos in BitIter(bb){
+        result.extend(pseudo_legal_to_moves(knight_square_pseudo_legal(board, turn, pos as usize), pos as u8, turn, Piece::Knight))
+    }
+    println!("{:?}", result);
+    return result
+}
+
+
 /// Computes pseudo-legal moves for a knight on the given square.
 ///
 /// It returns a bitboard representing where the knight could move from the given square,
 /// considering other pieces on the board and the turn's color.
-fn knight_pseudo_legal(board: Board, turn: Turn, square: usize) -> u64 {
+fn knight_square_pseudo_legal(board: &Board, turn: &Turn, square: usize) -> u64 {
     match turn {
-        Turn::Black => !all_black(&board) & KNIGHT_MOVES[square],
-        Turn::White => !all_white(&board) & KNIGHT_MOVES[square],
+        Turn::Black => !all_black(board) & KNIGHT_MOVES[square],
+        Turn::White => !all_white(board) & KNIGHT_MOVES[square],
     }
 }
+
+fn pseudo_legal_to_moves(bitboard: u64, from_square: u8, turn: &Turn, piece: Piece) -> Vec<Move>
+{
+    let mut moves = Vec::new();
+    let mut bitboard = bitboard;
+    while bitboard != 0
+    {
+        let to_square = bitboard.trailing_zeros() as u8;
+        {
+            moves.push(Move{
+                    from: from_square, 
+                    to: to_square,
+                    piece: Some(piece)
+                }
+            )
+        }
+        bitboard &= bitboard -1;
+    }
+    println!{"{:?}", moves}
+    moves
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Move {
+    pub from: u8,               // Source square (0-63)
+    pub to: u8,                 // Destination square (0-63)
+    pub piece: Option<Piece>,
+    // pub piece: Option<Piece>, // Optional promotion piece
+    // pub captured: Option<Piece>, // Optional captured piece
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Piece
+{
+    Pawn,
+    Rook,
+    Bishop,
+    Knight,
+    King, 
+    Queen
+}
+
 
 #[derive(Copy, Clone)]
 pub enum Direction {

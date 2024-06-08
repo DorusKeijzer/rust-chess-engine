@@ -32,7 +32,6 @@ lazy_static! {
 /// white: P: 0,  R: 1,  K: 2,  N: 3,  Q: 4,  B: 5
 /// 
 /// black: p: 6,  r: 7,  k: 8,  n: 9,  q: 10,  b: 11'
-
 pub struct Board {
     pub bitboards: Box<[u64; 12]>,
 }
