@@ -204,26 +204,56 @@ pub fn occupied(board: &Board) -> u64 {
 }
 
 pub fn generate_legal_moves(board: &Board, turn: &Turn) -> Vec<Move> {
-    return knight_moves(board, turn);
+    let mut result = vec![];
+    result.extend(legal_moves(board, turn, Piece::Pawn));
+    result.extend(legal_moves(board, turn, Piece::Rook));
+    result.extend(legal_moves(board, turn, Piece::Bishop));
+    result.extend(legal_moves(board, turn, Piece::King));
+    result.extend(legal_moves(board, turn, Piece::Knight));
+    result.extend(legal_moves(board, turn, Piece::Queen));
+    return result
 }
 
-pub fn make_move(mut board: &mut Board, chess_move: &Move, turn: &Turn) {
-    let mut bb_to_update = &mut board.bitboards;
-
-    // offset is used for getting the relevant bitboard in the match statement below
+fn bitboard_from_piece_and_turn(turn: &Turn, piece: Piece) -> usize {
     let offset = if *turn == Turn::Black { 6 } else { 0 };
-    let mut index = 0;
-    match chess_move.piece {
-        Piece::Pawn => index = 0 + offset,
-        Piece::Rook => index = 1 + offset,
-        Piece::King => index = 2 + offset,
-        Piece::Knight => index = 3 + offset,
-        Piece::Queen => index = 4 + offset,
-        Piece::Bishop => index = 5 + offset,
+    match piece {
+        Piece::Pawn => 0 + offset,
+        Piece::Rook => 1 + offset,
+        Piece::King => 2 + offset,
+        Piece::Knight => 3 + offset,
+        Piece::Queen => 4 + offset,
+        Piece::Bishop => 5 + offset,
+    }
+}
+
+fn legal_moves(board: &Board, turn: &Turn, piece: Piece) -> Vec<Move>
+{
+    return pseudo_legal_moves(board, turn, piece)
+}
+
+fn pseudo_legal_moves(board: &Board, turn: &Turn, piece: Piece) -> Vec<Move> {
+    let mut result = vec![];
+    let bb_index = bitboard_from_piece_and_turn(turn, piece);
+
+    for square in BitIter(board.bitboards[bb_index]) {
+        let legal_moves = match piece {
+            Piece::Pawn => 0,
+            Piece::Rook => rook_attacks(occupied(board), square as usize),
+            Piece::Bishop => bishop_attacks(occupied(board), square as usize),
+            Piece::Knight => knight_square_pseudo_legal(board, turn, square as usize),
+            Piece::King => 0,
+            Piece::Queen => queen_attacks(occupied(board), square as usize),
+        };
+
+        result.extend(pseudo_legal_to_moves(
+            legal_moves,
+            square as u8,
+            turn,
+            piece,
+        ))
     }
 
-    bb_to_update[index] ^= utils::mask(chess_move.to);
-    bb_to_update[index] ^= utils::mask(chess_move.from);
+    return result;
 }
 
 fn knight_moves(board: &Board, turn: &Turn) -> Vec<Move> {
@@ -314,6 +344,24 @@ pub enum Direction {
     South,
     SouthWest,
     West,
+}
+
+fn bishop_attacks(occupied: u64, square: usize) -> u64 {
+    return get_positive_ray_attacks(occupied, Direction::NorthWest, square)
+        | get_negative_ray_attacks(occupied, Direction::SouthWest, square)
+        | get_negative_ray_attacks(occupied, Direction::SouthEast, square)
+        | get_positive_ray_attacks(occupied, Direction::NorthEast, square);
+}
+
+fn rook_attacks(occupied: u64, square: usize) -> u64 {
+    return get_positive_ray_attacks(occupied, Direction::North, square)
+        | get_negative_ray_attacks(occupied, Direction::West, square)
+        | get_negative_ray_attacks(occupied, Direction::South, square)
+        | get_positive_ray_attacks(occupied, Direction::East, square);
+}
+
+fn queen_attacks(occupied: u64, square: usize) -> u64 {
+    return rook_attacks(occupied, square) | bishop_attacks(occupied, square);
 }
 
 pub fn get_positive_ray_attacks(occupied: u64, dir: Direction, square: usize) -> u64 {
@@ -413,6 +461,15 @@ fn unmake_move(mut board: &mut Board, chess_move: &Move, turn: &Turn) {
         piece: chess_move.piece,
     };
     make_move(board, chess_move, turn)
+}
+
+pub fn make_move(mut board: &mut Board, chess_move: &Move, turn: &Turn) {
+    let mut bb_to_update = &mut board.bitboards;
+
+    let mut bb_index = bitboard_from_piece_and_turn(turn, chess_move.piece);
+
+    bb_to_update[bb_index] ^= utils::mask(chess_move.to);
+    bb_to_update[bb_index] ^= utils::mask(chess_move.from);
 }
 
 #[allow(dead_code)]
