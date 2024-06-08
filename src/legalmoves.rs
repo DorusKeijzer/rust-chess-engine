@@ -422,20 +422,10 @@ pub fn get_positive_ray_attacks(occupied: u64, dir: Direction, square: usize) ->
 }
 
 pub fn get_negative_ray_attacks(occupied: u64, dir: Direction, square: usize) -> u64 {
-    println!("{:?}", dir);
     let attacks = RAY_ATTACKS[dir as usize][square as usize];
-    println!("attackers");
-    utils::draw_bb(attacks);
     let blocker = attacks & occupied;
-    println!("blocker");
-    utils::draw_bb(blocker);
     if blocker != 0 {
         let square = 63 - blocker.leading_zeros() as usize;
-        println!("square");
-        utils::draw_bb(utils::mask(square as u8));
-        println!("attacks xor ray attacks");
-        utils::draw_bb(        attacks ^ RAY_ATTACKS[dir as usize][square as usize]
-        );
         attacks ^ RAY_ATTACKS[dir as usize][square as usize]
     } else {
         attacks
@@ -552,9 +542,6 @@ pub fn make_move(board: &mut Board, chess_move: &Move, turn: &Turn) {
 pub fn perft(board: &mut Board, turn: &Turn, depth: i32) -> i32 {
     let moves = generate_legal_moves(board, turn);
     let mut num_moves: i32 = moves.len() as i32;
-    for m in &moves {
-        println!("{}", m);
-    }
     if depth == 1 {
         return num_moves;
     }

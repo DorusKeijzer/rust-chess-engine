@@ -13,14 +13,16 @@ fn main() {
     let own = legalmoves::all_white(&board);
     utils::draw_bb(legalmoves::rook_attacks(legalmoves::occupied(&board), own, 3));
     utils::draw_bb(legalmoves::bishop_attacks(legalmoves::occupied(&board), own, 3));
-    // for i in 0..32
-    // {
-    //     println!("{i}");
-    //     utils::draw_bb(legalmoves::RAY_ATTACKS[0][i])
-    // }
-    let p = legalmoves::perft(&mut board, &Turn::White, 1);
+    let p = legalmoves::perft(&mut board, &Turn::White, 2);
     println!("{:?}", p);
 
+}
+
+pub struct state
+{
+    turn: Turn,
+    castling: u8,
+    enpassant: u8,
 }
 
 #[derive(PartialEq)]
