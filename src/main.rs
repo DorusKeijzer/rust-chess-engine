@@ -8,15 +8,15 @@ use legalmoves::rook_attacks;
 use legalmoves::unmake_move;
 use utils::draw_bb;
 fn main() {
-    let mut board: Board = Board::new(Some("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR"));
-    board.draw_board();
+    let mut board: Board = Board::new(Some("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8"));
+    board.draw();
     let state: State = State {
         turn: Turn::White,
         castling: 0,
         enpassant: 0,
     };
 
-    let p = legalmoves::perft(&mut board, &state, 1, true);
+    let p = legalmoves::perft(&mut board, &state, 1, false);
     println!("{:?}", p);
 }
 

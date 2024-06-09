@@ -48,7 +48,7 @@ impl Board {
         board
     }
 
-    pub fn draw_board(&self) {
+    pub fn draw(&self) {
         println!("");
         println!("     A  B  C  D  E  F  G  H");
         println!("");

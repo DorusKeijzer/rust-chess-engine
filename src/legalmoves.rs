@@ -5,7 +5,7 @@ use crate::{
     State
 };
 use lazy_static::lazy_static;
-use std::fmt;
+use std::{fmt, iter::Enumerate};
 use std::ops::Index;
 use std::slice::SliceIndex;
 
@@ -204,7 +204,7 @@ pub fn occupied(board: &Board) -> u64 {
     return all_black(board) | all_white(board);
 }
 
-pub fn generate_legal_moves(board: &Board, state: &State) -> Vec<Move> {
+pub fn generate_legal_moves(board: &mut Board, state: &State) -> Vec<Move> {
     let mut result = vec![];
     result.extend(legal_moves(board, state, Piece::Pawn));
     result.extend(legal_moves(board, state, Piece::Rook));
@@ -239,14 +239,69 @@ fn piece_from_bitboard_index(bb_index: u8) -> Option<Piece> {
     }
 }
 
-fn legal_moves(board: &Board, state: &State, piece: Piece) -> Vec<Move> {
-    return pseudo_legal_moves(board, state, piece);
+fn legal_moves(board: &mut Board, state: &State, piece: Piece) -> Vec<Move> {
+    let moves = pseudo_legal_moves(board, state, piece);
+    let mut result = vec![];
+    // makes move and if king not in check, push to results
+    for chess_move in moves
+    {
+        
+        make_move(board, &chess_move, state);
+        if !check(board, state)
+        {
+            result.push(chess_move)
+        }
+        unmake_move(board, &chess_move, state);
+    }
+
+    return result
+}
+
+fn check(board: &mut Board, state: &State) -> bool {
+    // king:  blacks king if black to move
+    // offset:  white pieces if black to move
+    // own: blacks pieces if black to move
+    let (king, offset, own) = match state.turn {
+        Turn::Black => (board.bitboards[8], 0, all_black(board)),
+        Turn::White => (board.bitboards[2], 6, all_white(board)),
+    };
+    let own = own - king;
+
+    // occupied should not take into account our own king
+    // because occupied is used to calculate ray attacks 
+    // and we need those to be able to intersect with the king
+    let occupied = occupied(board) - king;
+
+    let mut attacks = 0;
+
+    // for every piece, enumerate the instance on the board and add their attack pattern
+    for (i, piece) in vec![Piece::Pawn, Piece::Rook, Piece::King, 
+                             Piece::Knight, Piece::Queen, Piece::Bishop]
+                             .iter()
+                             .enumerate()
+    {
+        let bb = board.bitboards[i+offset];
+        for bit in BitIter(bb)
+        {
+            attacks |= match piece 
+            {
+                Piece::Pawn => pawn_square_pseudo_legal(board, state, bit as usize),
+                Piece::Rook => rook_attacks(occupied, own, bit as usize),
+                Piece::Bishop => bishop_attacks(occupied, own, bit as usize),
+                Piece::Knight => knight_square_pseudo_legal(board, state, bit as usize),
+                Piece::King => 0, // TODO
+                Piece::Queen => queen_attacks(occupied, own, bit as usize),
+            };
+        }
+    }
+    // true if attack patterns intersect the king
+    return (king & attacks) != 0
 }
 
 fn pseudo_legal_moves(board: &Board, state: &State, piece: Piece) -> Vec<Move> {
     let mut result = vec![];
     let bb_index = bitboard_from_piece_and_state(&state, piece);
-    let own = match state.turn {
+    let own: u64 = match state.turn {
         Turn::Black => all_black(board),
         Turn::White => all_white(board),
     };
@@ -626,21 +681,21 @@ mod tests {
         let mut board: Board = Board::new(Some("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"));
         let turn: Turn = Turn::White;
         let state: State = State{turn, castling: 0, enpassant: 0};
-        assert_eq!(perft(&mut board, &state, 1), 20);
-        assert_eq!(perft(&mut board, &state, 2), 400);
-        assert_eq!(perft(&mut board, &state, 3), 8902);
-        assert_eq!(perft(&mut board, &state, 4), 197_281);
-        assert_eq!(perft(&mut board, &state, 5), 4_865_609);
+        assert_eq!(perft(&mut board, &state, 1, false), 20);
+        assert_eq!(perft(&mut board, &state, 2, false), 400);
+        assert_eq!(perft(&mut board, &state, 3, false), 8902);
+        assert_eq!(perft(&mut board, &state, 4, false), 197_281);
+        assert_eq!(perft(&mut board, &state, 5, false), 4_865_609);
     }    
     #[test]
     fn perft_test_2() {
         let mut board: Board = Board::new(Some("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"));
         let turn: Turn = Turn::White;
         let state: State = State{turn, castling: 0, enpassant: 0};
-        assert_eq!(perft(&mut board, &state, 1), 48);
-        assert_eq!(perft(&mut board, &state, 2), 2039);
-        assert_eq!(perft(&mut board, &state, 3), 97_862);
-        assert_eq!(perft(&mut board, &state, 4), 4_085_603);
-        assert_eq!(perft(&mut board, &state, 5), 193_690_690);
+        assert_eq!(perft(&mut board, &state, 1, false), 48);
+        assert_eq!(perft(&mut board, &state, 2, false), 2039);
+        assert_eq!(perft(&mut board, &state, 3, false), 97_862);
+        assert_eq!(perft(&mut board, &state, 4, false), 4_085_603);
+        assert_eq!(perft(&mut board, &state, 5, false), 193_690_690);
     }
 }
