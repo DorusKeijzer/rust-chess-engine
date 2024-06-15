@@ -10,6 +10,7 @@ use legalmoves::make_move;
 use legalmoves::rook_attacks;
 use legalmoves::unmake_move;
 fn main() {
-    let (board, state) = board::standard_start();
+    let (mut board, mut state) = board::standard_start();
     board.draw();
+    legalmoves::perft(&mut board, &mut state, 1, 1, true);
 }

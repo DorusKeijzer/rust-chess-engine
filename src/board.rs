@@ -39,12 +39,13 @@ pub fn empty_start() -> (Board, State) {
 }
 
 /// Creates a standard starting board
-pub fn standard_start() -> (Board, State)
-{
-    parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+pub fn standard_start() -> (Board, State) {
+    let (board, state) = parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+
+    (board, state)
 }
 
-/// parses a fen and returns a board and a state reflecting this fen
+/// Parses a FEN and returns a board and a state reflecting this FEN
 pub fn parse_fen(fen_string: &str) -> (Board, State) {
     let split = fen_string.split(" ").collect::<Vec<&str>>();
 

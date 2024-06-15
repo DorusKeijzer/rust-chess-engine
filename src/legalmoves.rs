@@ -411,14 +411,14 @@ fn pawn_square_pseudo_legal(board: &Board, state: &State, square: usize) -> u64 
     if white_to_play {
         if ((square >> 8) & occ) == 0 {
             result |= square >> 8;
-            if square & 0xFF00 != 0 && ((square >> 16) & occ) == 0 {
+            if square & 0xFF000000000000 != 0 && ((square >> 16) & occ) == 0 {
                 result |= square >> 16;
             }
         }
     } else {
         if ((square << 8) & occ) == 0 {
             result |= square << 8;
-            if square & 0xFF000000000000 != 0 && ((square << 16) & occ) == 0 {
+            if square & 0xFF00 != 0 && ((square << 16) & occ) == 0 {
                 result |= square << 16;
             }
         }
