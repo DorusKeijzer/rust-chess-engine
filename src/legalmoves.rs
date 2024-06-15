@@ -1,13 +1,13 @@
 use crate::{
     board::{self, Board},
     utils::{self, draw_bb, find_bitboard, BitIter},
-    Turn,
-    State
+    State, Turn,
 };
+use core::num;
 use lazy_static::lazy_static;
-use std::{fmt, iter::Enumerate};
 use std::ops::Index;
 use std::slice::SliceIndex;
+use std::{fmt, iter::Enumerate};
 
 lazy_static! {
     /// Stores all the ray attacks.
@@ -26,17 +26,9 @@ lazy_static! {
     /// `KNIGHT_MOVES[i]` holds the possible moves for a knight at square `i`
     pub static ref KNIGHT_MOVES: [u64; 64] = init_knight_tables();
 
-    /// Stores all the possible rook moves.
-    /// `ROOK_MOVES[i]` holds the possible moves for a rook at square `i`
-    pub static ref ROOK_MOVES: [u64; 64] = init_rook_tables();
-
-    /// Stores all the possible bishop moves.
-    /// `BISHOP_MOVES[i]` holds the possible moves for a bishop at square `i`
-    pub static ref BISHOP_MOVES: [u64; 64] = init_bishop_tables();
-
-    /// Stores all the possible queen moves.
-    /// `QUEEN_MOVES[i]` holds the possible moves for a queen at square `i`
-    pub static ref QUEEN_MOVES: [u64; 64] = init_queen_tables();
+    /// Stores all the possible knight moves.
+    /// `KING_MOVES[i]` holds the possible moves for a knight at square `i`
+    pub static ref KING_MOVES: [u64; 64] = init_king_tables();
 }
 
 pub fn init_ray_attacks() -> [[u64; 64]; 8] {
@@ -61,7 +53,7 @@ fn north_west_rays() -> [u64; 64] {
 
             let index = col + row;
             let diagonal = north_west_ray << col + row;
-            for _ in 0..(col-1) {
+            for _ in 0..(col - 1) {
                 mask |= mask << 1;
             }
             res[index as usize] = mask & diagonal;
@@ -176,6 +168,15 @@ fn init_knight_tables() -> [u64; 64] {
     res
 }
 
+fn init_king_tables() -> [u64; 64] {
+    let mut res: [u64; 64] = [0; 64];
+    for i in 0..64 {
+        let king_position = utils::mask(i as u8);
+        res[i] = king_attacks(king_position)
+    }
+    res
+}
+
 /// Returns a bitboard of all white pieces on the board.
 ///
 /// This function combines the bitboards of white pieces (pawns, knights, bishops, rooks, queens, kings)
@@ -204,15 +205,19 @@ pub fn occupied(board: &Board) -> u64 {
     return all_black(board) | all_white(board);
 }
 
-pub fn generate_legal_moves(board: &mut Board, state: &State) -> Vec<Move> {
-    let mut result = vec![];
-    result.extend(legal_moves(board, state, Piece::Pawn));
-    result.extend(legal_moves(board, state, Piece::Rook));
-    result.extend(legal_moves(board, state, Piece::Bishop));
-    result.extend(legal_moves(board, state, Piece::King));
-    result.extend(legal_moves(board, state, Piece::Knight));
-    result.extend(legal_moves(board, state, Piece::Queen));
-    return result;
+pub fn generate_legal_moves(board: &mut Board, state: &mut State) -> Vec<Move> {
+    let mut result = Vec::new();
+    for &piece in &[
+        Piece::Pawn,
+        Piece::Rook,
+        Piece::Bishop,
+        Piece::King,
+        Piece::Knight,
+        Piece::Queen,
+    ] {
+        result.extend(legal_moves(board, state, piece));
+    }
+    result
 }
 
 fn bitboard_from_piece_and_state(state: &State, piece: Piece) -> usize {
@@ -239,22 +244,19 @@ fn piece_from_bitboard_index(bb_index: u8) -> Option<Piece> {
     }
 }
 
-fn legal_moves(board: &mut Board, state: &State, piece: Piece) -> Vec<Move> {
+fn legal_moves(board: &mut Board, state: &mut State, piece: Piece) -> Vec<Move> {
     let moves = pseudo_legal_moves(board, state, piece);
     let mut result = vec![];
     // makes move and if king not in check, push to results
-    for chess_move in moves
-    {
-        
+    for chess_move in moves {
         make_move(board, &chess_move, state);
-        if !check(board, state)
-        {
+        if !check(board, state) {
             result.push(chess_move)
         }
         unmake_move(board, &chess_move, state);
     }
 
-    return result
+    return result;
 }
 
 fn check(board: &mut Board, state: &State) -> bool {
@@ -268,52 +270,64 @@ fn check(board: &mut Board, state: &State) -> bool {
     let own = own - king;
 
     // occupied should not take into account our own king
-    // because occupied is used to calculate ray attacks 
+    // because occupied is used to calculate ray attacks
     // and we need those to be able to intersect with the king
     let occupied = occupied(board) - king;
 
     let mut attacks = 0;
 
     // for every piece, enumerate the instance on the board and add their attack pattern
-    for (i, piece) in vec![Piece::Pawn, Piece::Rook, Piece::King, 
-                             Piece::Knight, Piece::Queen, Piece::Bishop]
-                             .iter()
-                             .enumerate()
+    for (i, piece) in vec![
+        Piece::Pawn,
+        Piece::Rook,
+        Piece::King,
+        Piece::Knight,
+        Piece::Queen,
+        Piece::Bishop,
+    ]
+    .iter()
+    .enumerate()
     {
-        let bb = board.bitboards[i+offset];
-        for bit in BitIter(bb)
-        {
-            attacks |= match piece 
-            {
-                Piece::Pawn => pawn_square_pseudo_legal(board, state, bit as usize),
+        let bb = board.bitboards[i + offset];
+        for bit in BitIter(bb) {
+            attacks |= match piece {
+                Piece::Pawn => pawn_captures(board, state, bit as usize, true),
                 Piece::Rook => rook_attacks(occupied, own, bit as usize),
                 Piece::Bishop => bishop_attacks(occupied, own, bit as usize),
                 Piece::Knight => knight_square_pseudo_legal(board, state, bit as usize),
-                Piece::King => 0, // TODO
+                Piece::King => king_square_pseudo_legal(board, state, bit as usize),
                 Piece::Queen => queen_attacks(occupied, own, bit as usize),
             };
         }
     }
     // true if attack patterns intersect the king
-    return (king & attacks) != 0
+    return (king & attacks) != 0;
 }
 
 fn pseudo_legal_moves(board: &Board, state: &State, piece: Piece) -> Vec<Move> {
     let mut result = vec![];
-    let bb_index = bitboard_from_piece_and_state(&state, piece);
+    let bb_index = bitboard_from_piece_and_state(state, piece);
+
+    let occupied_squares = occupied(board);
     let own: u64 = match state.turn {
         Turn::Black => all_black(board),
         Turn::White => all_white(board),
     };
 
+
     for square in BitIter(board.bitboards[bb_index]) {
+
+
         let legal_moves = match piece {
-            Piece::Pawn => pawn_square_pseudo_legal(board, state, square as usize),
-            Piece::Rook => rook_attacks(occupied(board), own, square as usize),
-            Piece::Bishop => bishop_attacks(occupied(board), own, square as usize),
+            Piece::Pawn => {
+                pawn_square_pseudo_legal(board, state, square as usize)
+                    | pawn_captures(board, state, square as usize, false)
+            }
+            Piece::Rook => rook_attacks(occupied_squares, own, square as usize),
+            Piece::Bishop => bishop_attacks(occupied_squares, own, square as usize),
             Piece::Knight => knight_square_pseudo_legal(board, state, square as usize),
-            Piece::King => 0,
-            Piece::Queen => queen_attacks(occupied(board), own, square as usize),
+            Piece::King => king_square_pseudo_legal(board, state, square as usize),
+            Piece::Queen => queen_attacks(occupied_squares, own, square as usize),
         };
 
         result.extend(pseudo_legal_to_moves(
@@ -322,30 +336,17 @@ fn pseudo_legal_moves(board: &Board, state: &State, piece: Piece) -> Vec<Move> {
             square as u8,
             &state.turn,
             piece,
-        ))
+        ));
     }
 
-    return result;
+    result
 }
 
-fn knight_moves(board: &Board, state: &State) -> Vec<Move> {
-    let mut result = vec![];
-    let mut bb: u64 = 0;
+fn king_square_pseudo_legal(board: &Board, state: &State, square: usize) -> u64 {
     match state.turn {
-        Turn::Black => bb = board.bitboards[9],
-        Turn::White => bb = board.bitboards[3],
+        Turn::Black => !all_black(board) & KING_MOVES[square],
+        Turn::White => !all_white(board) & KING_MOVES[square],
     }
-    for pos in BitIter(bb) {
-        result.extend(pseudo_legal_to_moves(
-            board,
-            knight_square_pseudo_legal(board, state, pos as usize),
-            pos as u8,
-            &state.turn,
-            Piece::Knight,
-        ))
-    }
-
-    return result;
 }
 
 /// Computes pseudo-legal moves for a knight on the given square.
@@ -359,68 +360,75 @@ fn knight_square_pseudo_legal(board: &Board, state: &State, square: usize) -> u6
     }
 }
 
-fn pawn_square_pseudo_legal(board: &Board, state: &State, square: usize) -> u64
-{
+pub fn pawn_captures(board: &Board, state: &State, square: usize, reverse_state: bool) -> u64 {
     let square = utils::mask(square as u8);
     let occ = occupied(board);
     let mut result: u64 = 0;
     let white_to_play = state.turn == Turn::White;
-    if white_to_play
-    {
-        // if next square is unoccupied
-        if ((square << 8) & occ) == 0
-        {
-            result |= square << 8;
-            // if piece is on 7th rank and 2 squares over is unoccupied
-            if square & 65280 !=0 && 
-            (((square << 16) & occ) == 0)
-            {
-                result |= square << 16;
-            }
+    let opponent: u64 = if white_to_play ^ reverse_state {
+        all_black(board)
+    } else {
+        all_white(board)
+    };
+
+    if white_to_play ^ reverse_state {
+        if (square >> 7) & occ != 0 && square & 0x7F7F7F7F7F7F7F7F != 0 {
+            result |= square >> 7;
         }
-        if state.enpassant as u64 & (square << 7) != 0  // if en passent square is available
-        && square != 256                                // prevents wrapping
-        && (((square << 16) & occ) == 0)                // if space to move to is free
-        {
-            result|= square << 7;
+        if (square >> 9) & occ != 0 && square & 0xFEFEFEFEFEFEFEFE != 0 {
+            result |= square >> 9;
         }
-        if state.enpassant as u64 & (square << 9) != 0  // see above
-        && square != 32768 
-        && (((square << 9) & occ) == 0)
-        {
-            result|= square << 9;
+        if state.enpassant as u64 & (square >> 7) != 0 && square & 0x8080808080808080 == 0 {
+            result |= square >> 7;
+        }
+        if state.enpassant as u64 & (square >> 9) != 0 && square & 0x0101010101010101 == 0 {
+            result |= square >> 9;
+        }
+    } else {
+        if (square << 7) & occ != 0 && square & 0xFEFEFEFEFEFEFEFE != 0 {
+            result |= square << 7;
+        }
+        if (square << 9) & occ != 0 && square & 0x7F7F7F7F7F7F7F7F != 0 {
+            result |= square << 9;
+        }
+        if state.enpassant as u64 & (square << 7) != 0 && square & 0x0101010101010101 == 0 {
+            result |= square << 7;
+        }
+        if state.enpassant as u64 & (square << 9) != 0 && square & 0x8080808080808080 == 0 {
+            result |= square << 9;
         }
     }
-    else
-    {
-        // if next square is unoccupied
-        {
+
+    return result & opponent;
+}
+
+fn pawn_square_pseudo_legal(board: &Board, state: &State, square: usize) -> u64 {
+    let square = utils::mask(square as u8);
+    let occ = occupied(board);
+    let mut result: u64 = 0;
+    let white_to_play = state.turn == Turn::White;
+
+    if white_to_play {
+        if ((square >> 8) & occ) == 0 {
             result |= square >> 8;
-            // if piece is on 2nd rank
-            if square & 71776119061217280 !=0 &&
-            ((square >> 16) & occ) == 0 {
+            if square & 0xFF00 != 0 && ((square >> 16) & occ) == 0 {
                 result |= square >> 16;
             }
         }
-        // if en passant square is up, and without wrappign around
-        if state.enpassant as u64 & (square >> 7) != 0 
-        && square != 36028797018963968
-        && ((square >> 7) & occ) == 0
-        {
-            result|= square >> 7;
-        }
-        if state.enpassant as u64 & (square >> 9) != 0 
-        && square != 281474976710656
-        && ((square >> 9) & occ) == 0
-        {
-            result|= square >> 9;
+    } else {
+        if ((square << 8) & occ) == 0 {
+            result |= square << 8;
+            if square & 0xFF000000000000 != 0 && ((square << 16) & occ) == 0 {
+                result |= square << 16;
+            }
         }
     }
-    return result
+
+    return result;
 }
 
 fn bitboard_index_from_square(board: Board, square: u8) -> Option<u8> {
-    for i in 0..8 {
+    for i in 0..12 {
         if board.bitboards[i] ^ utils::mask(square) != 0 {
             return Some(i as u8);
         }
@@ -457,7 +465,7 @@ fn pseudo_legal_to_moves(
     moves
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Move {
     pub from: u8, // Source square (0-63)
     pub to: u8,   // Destination square (0-63)
@@ -478,7 +486,7 @@ impl fmt::Display for Move {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Piece {
     Pawn,
     Rook,
@@ -504,7 +512,7 @@ pub fn bishop_attacks(occupied: u64, own: u64, square: usize) -> u64 {
     return (get_positive_ray_attacks(occupied, Direction::NorthWest, square)
         | get_positive_ray_attacks(occupied, Direction::NorthEast, square)
         | get_negative_ray_attacks(occupied, Direction::SouthWest, square)
-        | get_negative_ray_attacks(occupied, Direction::SouthEast, square)) 
+        | get_negative_ray_attacks(occupied, Direction::SouthEast, square))
         & !own;
 }
 
@@ -544,54 +552,6 @@ pub fn get_negative_ray_attacks(occupied: u64, dir: Direction, square: usize) ->
     }
 }
 
-/// Initializes the bishop move lookup table.
-///
-/// This function initializes a lookup table for bishop moves on a chessboard.
-/// It computes all possible bishop moves for each square on the board and stores them in an array.
-///
-/// Returns:
-/// - An array containing the bishop moves for each square on the chessboard.
-fn init_bishop_tables() -> [u64; 64] {
-    let mut res: [u64; 64] = [0; 64];
-    for i in 0..64 {
-        res[i] = RAY_ATTACKS[0][i] | RAY_ATTACKS[2][i] | RAY_ATTACKS[4][i] | RAY_ATTACKS[6][i];
-    }
-    res
-}
-
-/// Initializes the queen move lookup table.
-///
-/// This function initializes a lookup table for queen moves on a chessboard.
-/// It computes all possible queen moves for each square on the board and stores them in an array.
-///
-/// Returns:
-/// - An array containing the queen moves for each square on the chessboard.
-fn init_queen_tables() -> [u64; 64] {
-    let mut res: [u64; 64] = [0; 64];
-    for i in 0..64 {
-        for j in 0..9 {
-            res[i] |= RAY_ATTACKS[j][i];
-        }
-    }
-
-    res
-}
-
-/// Initializes the rook move lookup table.
-///
-/// This function initializes a lookup table for rook moves on a chessboard.
-/// It computes all possible rook moves for each square on the board and stores them in an array.
-///
-/// Returns:
-/// - An array containing the rook moves for each square on the chessboard.
-fn init_rook_tables() -> [u64; 64] {
-    let mut res: [u64; 64] = [0; 64];
-    for i in 0..64 {
-        res[i] = RAY_ATTACKS[1][i] | RAY_ATTACKS[3][i] | RAY_ATTACKS[5][i] | RAY_ATTACKS[7][i];
-    }
-    res
-}
-
 /// Computes possible knight attacks from a given position.
 ///
 /// This function calculates the possible knight attacks from a given position on the chessboard.
@@ -611,8 +571,51 @@ fn knight_attacks(knight_bb: u64) -> u64 {
     let h2 = l2 | r2;
     (h1 << 16) | (h1 >> 16) | (h2 << 8) | (h2 >> 8)
 }
+/// Computes possible king attacks from a given position.
+///
+/// This function calculates the possible king attacks from a given position on the chessboard.
+/// It returns a bitboard representing the squares that can be attacked by a king from the given position.
+///
+/// Parameters:
+/// - `king_bb`: A bitboard representing the position of the king.
+///
+/// Returns:
+/// - A bitboard representing the squares that can be attacked by a king from the given position.
+fn king_attacks(king_set: u64) -> u64 {
+    let mut attacks = east_one(king_set) | west_one(king_set);
+    let mut king_set = king_set | attacks;
+    attacks |= north_one(king_set) | south_one(king_set);
+    attacks
+}
 
-pub fn unmake_move(board: &mut Board, chess_move: &Move, state: &State) {
+// Placeholder functions for east_one, west_one, north_one, south_one
+// These functions need to be implemented according to the specific logic of your application
+fn east_one(bitboard: u64) -> u64 {
+    bitboard << 1 & !0x0101010101010101 // Example bitmask to handle board boundaries
+}
+
+fn west_one(bitboard: u64) -> u64 {
+    bitboard >> 1 & !0x8080808080808080 // Example bitmask to handle board boundaries
+}
+
+fn north_one(bitboard: u64) -> u64 {
+    bitboard << 8
+}
+
+fn south_one(bitboard: u64) -> u64 {
+    bitboard >> 8
+}
+
+fn switch_turn(state: &mut State) -> () {
+    state.turn = if state.turn == Turn::White {
+        Turn::Black
+    } else {
+        Turn::White
+    };
+}
+
+pub fn unmake_move(board: &mut Board, chess_move: &Move, state: &mut State) {
+    switch_turn(state);
     let bb_to_update = &mut board.bitboards;
     let bb_index = bitboard_from_piece_and_state(state, chess_move.piece);
 
@@ -625,7 +628,7 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, state: &State) {
     bb_to_update[bb_index] ^= utils::mask(chess_move.from);
 }
 
-pub fn make_move(board: &mut Board, chess_move: &Move, state: &State) {
+pub fn make_move(board: &mut Board, chess_move: &Move, state: &mut State) {
     let bb_to_update = &mut board.bitboards;
     let bb_index = bitboard_from_piece_and_state(state, chess_move.piece);
 
@@ -637,9 +640,9 @@ pub fn make_move(board: &mut Board, chess_move: &Move, state: &State) {
 
     bb_to_update[bb_index] ^= utils::mask(chess_move.to);
     bb_to_update[bb_index] ^= utils::mask(chess_move.from);
+    switch_turn(state);
 }
 
-#[allow(unused_variables)]
 /// Performs perft (Performance Test) for a given depth.
 ///
 /// This function computes the number of possible moves for a given depth in the game tree.
@@ -650,22 +653,38 @@ pub fn make_move(board: &mut Board, chess_move: &Move, state: &State) {
 ///
 /// Returns:
 /// - The number of possible moves at the specified depth.
-pub fn perft(board: &mut Board, state: &State, depth: i32, verbose: bool) -> i32 {
+pub fn perft(
+    board: &mut Board,
+    state: &mut State,
+    depth: i32,
+    startdepth: i32,
+    verbose: bool,
+) -> i32 {
+    if depth == 0 {
+        return 1;
+    }
+
     let moves = generate_legal_moves(board, state);
-    let mut num_moves: i32 = moves.len() as i32;
-    if verbose
-    {
-        for m in &moves
-        {
-            println!("{}", m);
-        }
-    }
-    if depth == 1 {
-        return num_moves;
-    }
+    let mut num_moves: i32 = 0;
     for m in moves {
+        if verbose {
+            println!(
+                "{}{} {:?}",
+                "  ".repeat((startdepth - depth) as usize),
+                m,
+                state.turn
+            );
+        }
         make_move(board, &m, state);
-        num_moves += perft(board, state, depth - 1, verbose);
+        let newmoves = perft(board, state, depth - 1, startdepth, verbose);
+        if verbose && depth != 1 {
+            println!(
+                "{}Total for {m}: {}",
+                "  ".repeat((startdepth - depth) as usize),
+                newmoves,
+            );
+        }
+        num_moves += newmoves;
         unmake_move(board, &m, state)
     }
 
@@ -680,22 +699,156 @@ mod tests {
     fn perft_test_1() {
         let mut board: Board = Board::new(Some("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"));
         let turn: Turn = Turn::White;
-        let state: State = State{turn, castling: 0, enpassant: 0};
-        assert_eq!(perft(&mut board, &state, 1, false), 20);
-        assert_eq!(perft(&mut board, &state, 2, false), 400);
-        assert_eq!(perft(&mut board, &state, 3, false), 8902);
-        assert_eq!(perft(&mut board, &state, 4, false), 197_281);
-        assert_eq!(perft(&mut board, &state, 5, false), 4_865_609);
-    }    
+        let mut state: State = State {
+            turn,
+            castling: 0,
+            enpassant: 0,
+        };
+        assert_eq!(perft(&mut board, &mut state, 1, 1, false), 20);
+        assert_eq!(perft(&mut board, &mut state, 2, 2, false), 400);
+        assert_eq!(perft(&mut board, &mut state, 3, 3, false), 8902);
+        assert_eq!(perft(&mut board, &mut state, 4, 4, false), 197_281);
+        assert_eq!(perft(&mut board, &mut state, 5, 5, false), 4_865_609);
+    }
     #[test]
     fn perft_test_2() {
         let mut board: Board = Board::new(Some("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"));
         let turn: Turn = Turn::White;
-        let state: State = State{turn, castling: 0, enpassant: 0};
-        assert_eq!(perft(&mut board, &state, 1, false), 48);
-        assert_eq!(perft(&mut board, &state, 2, false), 2039);
-        assert_eq!(perft(&mut board, &state, 3, false), 97_862);
-        assert_eq!(perft(&mut board, &state, 4, false), 4_085_603);
-        assert_eq!(perft(&mut board, &state, 5, false), 193_690_690);
+        let mut state: State = State {
+            turn,
+            castling: 0,
+            enpassant: 0,
+        };
+        assert_eq!(perft(&mut board, &mut state, 1, 1, false), 48);
+        assert_eq!(perft(&mut board, &mut state, 2, 2, false), 2039);
+        assert_eq!(perft(&mut board, &mut state, 3, 3, false), 97_862);
+        assert_eq!(perft(&mut board, &mut state, 4, 4, false), 4_085_603);
+        assert_eq!(perft(&mut board, &mut state, 5, 5, false), 193_690_690);
+    }
+    fn setup_board(fen: &str) -> (Board, State) {
+        let board = Board::new(Some(fen));
+        let state = State {
+            turn: Turn::Black,
+            castling: 0,
+            enpassant: 0,
+        };
+        (board, state)
+    }
+
+    #[test]
+    fn test_board_initialization() {
+        let (board, state) = setup_board("p7/3p4/8/8/8/8/8/8");
+        // Test if the board initializes correctly
+        assert_eq!(board.bitboards[6], 2049); // Black pawn
+        assert_eq!(state.turn, Turn::Black);
+    }
+
+    #[test]
+    fn test_legal_moves_for_black_pawn() {
+        let (mut board, mut state) = setup_board("8/3p4/8/8/8/8/8/8");
+        let moves = generate_legal_moves(&mut board, &mut state);
+        // Check that legal moves for black pawns are correct
+        let expected_moves = vec![Move {
+            from: 11,
+            to: 19,
+            piece: Piece::Pawn,
+            captured: None,
+        }];
+        assert_eq!(moves, expected_moves);
+    }
+
+    #[test]
+    fn test_move_application_and_reversion() {
+        let (mut board, mut state) = setup_board("8/3p4/8/8/8/8/8/8");
+        let mv = Move {
+            from: 11,
+            to: 19,
+            piece: Piece::Pawn,
+            captured: None,
+        };
+
+        board.draw();
+        assert_eq!(board.bitboards[6], 2048); // Black pawn restored
+        assert_eq!(state.turn, Turn::Black);
+        make_move(&mut board, &mv, &mut state);
+        board.draw();
+        // Verify that the move has been made
+        assert_eq!(board.bitboards[6], 524288); // Black pawn moved
+        assert_eq!(state.turn, Turn::White);
+
+        unmake_move(&mut board, &mv, &mut state);
+        board.draw();
+        // Verify that the move has been undone
+        assert_eq!(board.bitboards[6], 2048); // Black pawn restored
+        assert_eq!(state.turn, Turn::Black);
+    }
+
+    #[test]
+    fn test_no_white_pawn_creation() {
+        let (mut board, mut state) = setup_board("8/3p4/8/8/8/8/8/8");
+        let moves = generate_legal_moves(&mut board, &mut state);
+
+        for mv in &moves {
+            make_move(&mut board, &mv, &mut state);
+            // Ensure no white pawns are created
+            assert_eq!(board.bitboards[0], 0); // No white pawns
+            unmake_move(&mut board, &mv, &mut state);
+        }
+    }
+
+    #[test]
+    fn test_en_passant() {
+        let (mut board, mut state) = setup_board("8/8/8/3pP3/8/8/8/8");
+        state.turn = Turn::White;
+        state.enpassant = 27; // The en passant target square is d6 (index 27)
+
+        let legal_moves = generate_legal_moves(&mut board, &mut state);
+        let en_passant_move = Move {
+            from: 28,
+            to: 19,
+            piece: Piece::Pawn,
+            captured: Some(Piece::Pawn),
+        };
+        assert!(legal_moves.contains(&en_passant_move));
+    }
+
+    #[test]
+    fn test_castling() {
+        let (mut board, mut state) = setup_board("r3k2r/8/8/8/8/8/8/R3K2R");
+        state.castling = 0b1111; // Both sides can castle both ways
+
+        state.turn = Turn::White;
+        let white_castle_moves = generate_legal_moves(&mut board, &mut state);
+        assert!(white_castle_moves.iter().any(|m| m.from == 4 && m.to == 6)); // King side castle
+        assert!(white_castle_moves.iter().any(|m| m.from == 4 && m.to == 2)); // Queen side castle
+
+        state.turn = Turn::Black;
+        let black_castle_moves = generate_legal_moves(&mut board, &mut state);
+        assert!(black_castle_moves
+            .iter()
+            .any(|m| m.from == 60 && m.to == 62)); // King side castle
+        assert!(black_castle_moves
+            .iter()
+            .any(|m| m.from == 60 && m.to == 58)); // Queen side castle
+    }
+
+    #[test]
+    fn test_pawn_promotion() {
+        let (mut board, mut state) = setup_board("8/P7/8/8/8/8/8/8");
+        state.turn = Turn::White;
+
+        let legal_moves = generate_legal_moves(&mut board, &mut state);
+        let promotion_moves = vec![
+            Move {
+                from: 8,
+                to: 0,
+                piece: Piece::Pawn,
+                captured: None,
+            }, // Assume it promotes to Queen
+        ];
+        promotion_moves.iter().for_each(|m| {
+            assert!(legal_moves.contains(m), "Missing promotion move: {:?}", m);
+        });
+        assert_eq!(legal_moves.len(), promotion_moves.len());
     }
 }

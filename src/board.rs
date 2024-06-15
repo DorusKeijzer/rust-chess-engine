@@ -87,7 +87,8 @@ impl Board {
 
             col -= 1;
         }
-        println!("{}  {}", 8, result);
+        println!("8  {}", result);
+        println!("");
     }
 
     #[allow(dead_code)]
@@ -95,10 +96,10 @@ impl Board {
         println!("{}", fenstring);
         // because fen strings do not obey little endian notation,
         // we have to mirror the substrings of each rank
-        let split_fen = fenstring.split("/");
+        let split_fen: Vec<&str>  = fenstring.split("/").collect();
         let mut reverse_fen = vec![];
 
-        for split in split_fen {
+        for split in split_fen.iter().rev() {
             let reversed: String = split.chars().rev().collect();
             reverse_fen.push(reversed);
         }

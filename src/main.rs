@@ -7,17 +7,22 @@ use legalmoves::make_move;
 use legalmoves::rook_attacks;
 use legalmoves::unmake_move;
 use utils::draw_bb;
+use utils::BitIter;
 fn main() {
-    let mut board: Board = Board::new(Some("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8"));
+    let mut board: Board = Board::new(Some("8/3p4/8/8/8/8/8/8"));
     board.draw();
-    let state: State = State {
-        turn: Turn::White,
+    let mut state: State = State {
+        turn: Turn::Black,
         castling: 0,
         enpassant: 0,
     };
-
-    let p = legalmoves::perft(&mut board, &state, 1, false);
-    println!("{:?}", p);
+    // let p = legalmoves::perft(&mut board, &mut state, 1,1, true);
+    // println!("{}", p);
+    let m = legalmoves::generate_legal_moves(&mut board, &mut state);
+    for moves in m
+    {
+        println!("{}", moves)
+    }
 }
 
 pub struct State {
@@ -36,7 +41,7 @@ impl State {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum Turn {
     White,
     Black,
