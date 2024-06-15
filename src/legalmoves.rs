@@ -248,11 +248,11 @@ fn legal_moves(board: &mut Board, state: &mut State, piece: Piece) -> Vec<Move> 
     let mut result = vec![];
     // makes move and if king not in check, push to results
     for chess_move in moves {
-        make_move(board, &chess_move, state);
+        make_move(board, &chess_move, state, true);
         if !check(board, state) {
             result.push(chess_move)
         }
-        unmake_move(board, &chess_move, state);
+        unmake_move(board, &chess_move, state, true);
     }
 
     return result;
@@ -459,7 +459,7 @@ fn pseudo_legal_to_moves(
                 to: to_square as u8,
                 piece: piece,
                 captured: captured_piece,
-                castled: false
+                castled: false,
             })
         }
     }
@@ -473,7 +473,7 @@ pub struct Move {
     pub piece: Piece,
     // pub promotion: Option<Piece>, // Optional promotion piece
     pub captured: Option<Piece>, // Optional captured piece
-    pub castled: bool // whether castling happened in this turn (responsible for moving king)
+    pub castled: bool, // whether castling happened in this turn (responsible for moving king)
 }
 
 impl fmt::Display for Move {
@@ -579,11 +579,10 @@ pub fn castling(state: &State) -> Vec<Move> {
     result
 }
 
-
 pub fn reconstruct_king_move(rook_move: &Move, state: &State) -> Move {
     let mut king_move = Move {
-        from: 4, // Initial square of the king (e1 for White, e8 for Black)
-        to: 0,   // Placeholder value
+        from: 4,            // Initial square of the king (e1 for White, e8 for Black)
+        to: 0,              // Placeholder value
         piece: Piece::King, // King's piece representation
         captured: None,
         castled: true,
@@ -609,7 +608,6 @@ pub fn reconstruct_king_move(rook_move: &Move, state: &State) -> Move {
     }
     king_move
 }
-
 
 pub fn queen_attacks(occupied: u64, own: u64, square: usize) -> u64 {
     return rook_attacks(occupied, own, square) | bishop_attacks(occupied, own, square);
@@ -701,8 +699,10 @@ fn switch_turn(state: &mut State) -> () {
     };
 }
 
-pub fn unmake_move(board: &mut Board, chess_move: &Move, state: &mut State) {
-    switch_turn(state);
+pub fn unmake_move(board: &mut Board, chess_move: &Move, state: &mut State, switch_state: bool) {
+    if switch_state {
+        switch_turn(state);
+    }
     let bb_to_update = &mut board.bitboards;
     let bb_index = bitboard_from_piece_and_state(state, chess_move.piece);
 
@@ -715,7 +715,7 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, state: &mut State) {
     bb_to_update[bb_index] ^= utils::mask(chess_move.from);
 }
 
-pub fn make_move(board: &mut Board, chess_move: &Move, state: &mut State) {
+pub fn make_move(board: &mut Board, chess_move: &Move, state: &mut State, switch_state: bool) {
     let bb_to_update = &mut board.bitboards;
     let bb_index = bitboard_from_piece_and_state(state, chess_move.piece);
 
@@ -727,7 +727,9 @@ pub fn make_move(board: &mut Board, chess_move: &Move, state: &mut State) {
 
     bb_to_update[bb_index] ^= utils::mask(chess_move.to);
     bb_to_update[bb_index] ^= utils::mask(chess_move.from);
-    switch_turn(state);
+    if switch_state {
+        switch_turn(state);
+    }
 }
 
 /// Performs perft (Performance Test) for a given depth.
@@ -762,7 +764,7 @@ pub fn perft(
                 state.turn
             );
         }
-        make_move(board, &m, state);
+        make_move(board, &m, state, true);
         let newmoves = perft(board, state, depth - 1, startdepth, verbose);
         if verbose && depth != 1 {
             println!(
@@ -772,7 +774,7 @@ pub fn perft(
             );
         }
         num_moves += newmoves;
-        unmake_move(board, &m, state)
+        unmake_move(board, &m, state, true)
     }
 
     return num_moves;
@@ -840,7 +842,7 @@ mod tests {
             to: 19,
             piece: Piece::Pawn,
             captured: None,
-            castled:false
+            castled: false,
         }];
         assert_eq!(moves, expected_moves);
     }
@@ -853,19 +855,19 @@ mod tests {
             to: 19,
             piece: Piece::Pawn,
             captured: None,
-            castled: false
+            castled: false,
         };
 
         board.draw();
         assert_eq!(board.bitboards[6], 2048); // Black pawn restored
         assert_eq!(state.turn, Turn::Black);
-        make_move(&mut board, &mv, &mut state);
+        make_move(&mut board, &mv, &mut state, true);
         board.draw();
         // Verify that the move has been made
         assert_eq!(board.bitboards[6], 524288); // Black pawn moved
         assert_eq!(state.turn, Turn::White);
 
-        unmake_move(&mut board, &mv, &mut state);
+        unmake_move(&mut board, &mv, &mut state, true);
         board.draw();
         // Verify that the move has been undone
         assert_eq!(board.bitboards[6], 2048); // Black pawn restored
@@ -878,10 +880,10 @@ mod tests {
         let moves = generate_legal_moves(&mut board, &mut state);
 
         for mv in &moves {
-            make_move(&mut board, &mv, &mut state);
+            make_move(&mut board, &mv, &mut state, true);
             // Ensure no white pawns are created
             assert_eq!(board.bitboards[0], 0); // No white pawns
-            unmake_move(&mut board, &mv, &mut state);
+            unmake_move(&mut board, &mv, &mut state, true);
         }
     }
 
@@ -897,7 +899,7 @@ mod tests {
             to: 19,
             piece: Piece::Pawn,
             captured: Some(Piece::Pawn),
-            castled: false
+            castled: false,
         };
         assert!(legal_moves.contains(&en_passant_move));
     }
@@ -934,7 +936,7 @@ mod tests {
                 to: 0,
                 piece: Piece::Pawn,
                 captured: None,
-                castled: false
+                castled: false,
             }, // Assume it promotes to Queen
         ];
         promotion_moves.iter().for_each(|m| {
