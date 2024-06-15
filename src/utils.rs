@@ -3,7 +3,9 @@ use std::fmt::Error;
 use crate::board::Board;
 #[allow(dead_code)]
 /// Creates a mask from a given index  
-pub fn mask(index: u8) -> u64 { 1 << index }
+pub fn mask(index: u8) -> u64 {
+    1 << index
+}
 #[allow(dead_code)]
 /// Checks if a specific bit is set in a given bitboard.
 ///
@@ -16,8 +18,7 @@ pub fn mask(index: u8) -> u64 { 1 << index }
 ///
 /// * `true` if the bit at the specified index is set (i.e., 1), otherwise `false`.
 ///
-pub fn bitset(bb: &u64, index: u8) -> bool
-{
+pub fn bitset(bb: &u64, index: u8) -> bool {
     assert!(index < 64);
     mask(index) & bb != 0
 }
@@ -37,8 +38,7 @@ pub fn bitset(bb: &u64, index: u8) -> bool
 /// This function generates a bitboard with only one bit set at the given index,
 /// while all other bits are zero.
 #[allow(dead_code)]
-pub fn get_square(index: u8) -> Result<u64, Error> 
-{
+pub fn get_square(index: u8) -> Result<u64, Error> {
     assert!(index < 64, "Index out of range");
     Ok(1 << index)
 }
@@ -74,8 +74,7 @@ pub fn find_bitboard(bitboards: &Board, index: u8) -> Option<usize> {
     None
 }
 #[allow(dead_code)]
-pub fn move_piece(bitboard: &mut u64, to_index: u8, from_index: u8) -> ()
-{
+pub fn move_piece(bitboard: &mut u64, to_index: u8, from_index: u8) -> () {
     assert!(to_index < 64, "Index out of range");
     assert!(from_index < 64, "Index out of range");
     *bitboard ^= get_square(to_index).unwrap();
@@ -106,46 +105,57 @@ impl Iterator for BitIter {
     }
 }
 
-// Assuming you have a method like this
 pub fn square_to_algebraic(square: u8) -> String {
     let file = (square % 8) as u8 + b'a';
-    let rank = (7-(square / 8)) as u8 + b'1';
+    let rank = (7 - (square / 8)) as u8 + b'1';
     format!("{}{}", file as char, rank as char)
 }
 
+pub fn algebraic_to_square(algebraic: &str) -> Option<u8> {
+    // Check if the input length is exactly 2 characters
+    if algebraic.len() != 2 {
+        return None; // or handle the error as appropriate
+    }
 
+    let chars: Vec<char> = algebraic.chars().collect();
+    let file = chars[0] as u8 - b'a'; // Convert 'a'-'h' to 0-7
+    let rank = chars[1] as u8 - b'1'; // Convert '1'-'8' to 0-7
+
+    // Calculate the square index
+    let square_index = file + 8 * rank;
+
+    Some(square_index)
+}
 
 #[allow(dead_code)]
-pub fn draw_bb(bb: u64)
-{
+pub fn draw_bb(bb: u64) {
     println!("     A  B  C  D  E  F  G  H");
     println!("");
 
     let mut result: String = String::from("");
     // this order is used to preserve little-endian indexing
-    for row in (0..8).rev()
-    {
+    for row in (0..8).rev() {
         let k = row * 8;
-        let row = 7-row;
-        for col in (k..k+8)//.rev() 
+        let row = 7 - row;
+        for col in (k..k + 8)
+        //.rev()
         {
             if {
                 let mask: u64 = 1 << col;
                 mask & bb != 0
+            } {
+                result.push_str(" 1 ")
+            } else {
+                result.push_str(" 0 ");
             }
-            {result.push_str(" 1 ")}
-            else
-            {result.push_str(" 0 ");}
         }
-        println!("{}   {result}", row+1);
+        println!("{}   {result}", row + 1);
         println!("");
         result = String::from("");
-
     }
-
 }
 
- #[cfg(test)]
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -200,7 +210,6 @@ mod tests {
         assert_eq!(find_bitboard(&bitboards, 10), Some(10));
         assert_eq!(find_bitboard(&bitboards, 11), Some(11));
     }
-    
 
     #[test]
     fn test_move_piece() {
@@ -209,4 +218,3 @@ mod tests {
         assert_eq!(bitboard, 0b0000_0000_0000_0011);
     }
 }
-

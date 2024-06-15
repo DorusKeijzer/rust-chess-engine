@@ -1,7 +1,6 @@
 use crate::{
-    board::{self, Board},
+    board::{self, Board, State, Turn},
     utils::{self, draw_bb, find_bitboard, BitIter},
-    State, Turn,
 };
 use core::num;
 use lazy_static::lazy_static;
@@ -314,10 +313,7 @@ fn pseudo_legal_moves(board: &Board, state: &State, piece: Piece) -> Vec<Move> {
         Turn::White => all_white(board),
     };
 
-
     for square in BitIter(board.bitboards[bb_index]) {
-
-
         let legal_moves = match piece {
             Piece::Pawn => {
                 pawn_square_pseudo_legal(board, state, square as usize)
@@ -378,11 +374,13 @@ pub fn pawn_captures(board: &Board, state: &State, square: usize, reverse_state:
         if (square >> 9) & occ != 0 && square & 0xFEFEFEFEFEFEFEFE != 0 {
             result |= square >> 9;
         }
-        if state.enpassant as u64 & (square >> 7) != 0 && square & 0x8080808080808080 == 0 {
-            result |= square >> 7;
-        }
-        if state.enpassant as u64 & (square >> 9) != 0 && square & 0x0101010101010101 == 0 {
-            result |= square >> 9;
+        if let Some(enpassent_square) = state.enpassant {
+            if enpassent_square as u64 & (square >> 7) != 0 && square & 0x8080808080808080 == 0 {
+                result |= square >> 7;
+            }
+            if enpassent_square as u64 & (square >> 9) != 0 && square & 0x0101010101010101 == 0 {
+                result |= square >> 9;
+            }
         }
     } else {
         if (square << 7) & occ != 0 && square & 0xFEFEFEFEFEFEFEFE != 0 {
@@ -391,11 +389,13 @@ pub fn pawn_captures(board: &Board, state: &State, square: usize, reverse_state:
         if (square << 9) & occ != 0 && square & 0x7F7F7F7F7F7F7F7F != 0 {
             result |= square << 9;
         }
-        if state.enpassant as u64 & (square << 7) != 0 && square & 0x0101010101010101 == 0 {
-            result |= square << 7;
-        }
-        if state.enpassant as u64 & (square << 9) != 0 && square & 0x8080808080808080 == 0 {
-            result |= square << 9;
+        if let Some(enpassent_square) = state.enpassant {
+            if enpassent_square as u64 & (square << 7) != 0 && square & 0x0101010101010101 == 0 {
+                result |= square << 7;
+            }
+            if enpassent_square as u64 & (square << 9) != 0 && square & 0x8080808080808080 == 0 {
+                result |= square << 9;
+            }
         }
     }
 
@@ -702,7 +702,7 @@ mod tests {
         let mut state: State = State {
             turn,
             castling: 0,
-            enpassant: 0,
+            enpassant: None,
         };
         assert_eq!(perft(&mut board, &mut state, 1, 1, false), 20);
         assert_eq!(perft(&mut board, &mut state, 2, 2, false), 400);
@@ -717,7 +717,7 @@ mod tests {
         let mut state: State = State {
             turn,
             castling: 0,
-            enpassant: 0,
+            enpassant: None,
         };
         assert_eq!(perft(&mut board, &mut state, 1, 1, false), 48);
         assert_eq!(perft(&mut board, &mut state, 2, 2, false), 2039);
@@ -730,7 +730,7 @@ mod tests {
         let state = State {
             turn: Turn::Black,
             castling: 0,
-            enpassant: 0,
+            enpassant: None,
         };
         (board, state)
     }
@@ -800,7 +800,7 @@ mod tests {
     fn test_en_passant() {
         let (mut board, mut state) = setup_board("8/8/8/3pP3/8/8/8/8");
         state.turn = Turn::White;
-        state.enpassant = 27; // The en passant target square is d6 (index 27)
+        state.enpassant = Some(27); // The en passant target square is d6 (index 27)
 
         let legal_moves = generate_legal_moves(&mut board, &mut state);
         let en_passant_move = Move {

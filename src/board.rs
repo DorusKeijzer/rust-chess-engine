@@ -1,3 +1,4 @@
+use core::panic;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
@@ -28,6 +29,91 @@ lazy_static! {
         map
     };
 }
+
+/// Creates an empty start and with standard starting state
+pub fn empty_start() -> (Board, State) {
+    let board: Board = Board::new(None);
+    let state: State = State::new(None);
+
+    (board, state)
+}
+
+/// Creates a standard starting board
+pub fn standard_start() -> (Board, State)
+{
+    parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+}
+
+/// parses a fen and returns a board and a state reflecting this fen
+pub fn parse_fen(fen_string: &str) -> (Board, State) {
+    let split = fen_string.split(" ").collect::<Vec<&str>>();
+
+    let board: Board = Board::new(Some(split[0]));
+    let state: State = State::new(Some((split[1], split[2], split[3])));
+
+    (board, state)
+}
+
+/// castling:
+/// 0 b 0 0 0 0
+///     K Q k q
+pub struct State {
+    pub turn: Turn,
+    pub castling: u8,
+    pub enpassant: Option<u8>,
+}
+
+impl State {
+    pub fn new(state_fen: Option<(&str, &str, &str)>) -> State {
+        if let Some(state_string) = state_fen {
+            let (turn, castling_string, en_passant) = state_string;
+            let whose_turn = match turn.to_lowercase().as_str() {
+                "w" => Turn::White,
+                "b" => Turn::Black,
+                _ => panic!("{turn} is not a valid turn indicator"),
+            };
+            let mut castle = 0;
+            // Calculate castling rights
+            let mut castling = 0;
+            if castling_string.contains('K') {
+                castling |= 0b1000;
+            }
+            if castling_string.contains('Q') {
+                castling |= 0b0100;
+            }
+            if castling_string.contains('k') {
+                castling |= 0b0010;
+            }
+            if castling_string.contains('q') {
+                castling |= 0b0001;
+            }
+
+            let enpassent_square = utils::algebraic_to_square(en_passant);
+
+            State {
+                turn: whose_turn,
+                castling: castle,
+                enpassant: enpassent_square,
+            }
+        }
+        else
+        {
+            State {
+                turn: Turn::White,
+                castling: 0b1111,
+                enpassant: None,
+            }
+       
+        }
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub enum Turn {
+    White,
+    Black,
+}
+
 /// Stores the state of the board in 12 bit boards. The order is as follows:
 ///
 /// white: P: 0,  R: 1,  K: 2,  N: 3,  Q: 4,  B: 5
@@ -96,7 +182,7 @@ impl Board {
         println!("{}", fenstring);
         // because fen strings do not obey little endian notation,
         // we have to mirror the substrings of each rank
-        let split_fen: Vec<&str>  = fenstring.split("/").collect();
+        let split_fen: Vec<&str> = fenstring.split("/").collect();
         let mut reverse_fen = vec![];
 
         for split in split_fen.iter().rev() {
