@@ -60,7 +60,7 @@ pub fn parse_fen(fen_string: &str) -> (Board, State) {
 ///     K Q k q
 pub struct State {
     pub turn: Turn,
-    pub castling: u8,
+    pub castling_rights: u8, 
     pub enpassant: Option<u8>,
 }
 
@@ -93,18 +93,60 @@ impl State {
 
             State {
                 turn: whose_turn,
-                castling: castle,
+                castling_rights: castle,
                 enpassant: enpassent_square,
             }
-        }
-        else
-        {
+        } else {
             State {
                 turn: Turn::White,
-                castling: 0b1111,
+                castling_rights: 0b1111,
                 enpassant: None,
             }
-       
+        }
+    }
+    /// whether the current player can castle
+    pub fn can_castle_kingside(&self) -> bool {
+        match self.turn {
+            Turn::White => (self.castling_rights & 0b0100) != 0,
+            Turn::Black => (self.castling_rights & 0b0001) != 0,
+        }
+    }
+
+    /// whether the current player can castle
+    pub fn can_castle_queenside(&self) -> bool {
+        match self.turn {
+            Turn::White => (self.castling_rights & 0b1000) != 0,
+            Turn::Black => (self.castling_rights & 0b0010) != 0,
+        }
+    }
+    /// updates the state with regards to castling    
+    pub fn castle_kingside(&mut self) {
+        match self.turn {
+            Turn::White => {
+                self.castling_rights &= !0b0100; // Clear white kingside castling right
+            }
+            Turn::Black => {
+                self.castling_rights &= !0b0001; // Clear black kingside castling right
+            }
+        }
+    }
+    /// updates the state with regards to castling
+    pub fn castle_queenside(&mut self) {
+        match self.turn {
+            Turn::White => {
+                self.castling_rights &= !0b1000; // Clear white queenside castling right
+            }
+            Turn::Black => {
+                self.castling_rights &= !0b0010; // Clear black queenside castling right
+            }
+        }
+    }
+
+    pub fn perform_castle(&mut self, kingside: bool) {
+        if kingside {
+            self.castle_kingside();
+        } else {
+            self.castle_queenside();
         }
     }
 }

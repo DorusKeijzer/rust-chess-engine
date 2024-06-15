@@ -459,6 +459,7 @@ fn pseudo_legal_to_moves(
                 to: to_square as u8,
                 piece: piece,
                 captured: captured_piece,
+                castled: false
             })
         }
     }
@@ -472,6 +473,7 @@ pub struct Move {
     pub piece: Piece,
     // pub promotion: Option<Piece>, // Optional promotion piece
     pub captured: Option<Piece>, // Optional captured piece
+    pub castled: bool // whether castling happened in this turn (responsible for moving king)
 }
 
 impl fmt::Display for Move {
@@ -523,6 +525,91 @@ pub fn rook_attacks(occupied: u64, own: u64, square: usize) -> u64 {
         | get_negative_ray_attacks(occupied, Direction::South, square))
         & !own;
 }
+
+/// returns all the currently legal castling moves for the current player
+pub fn castling(state: &State) -> Vec<Move> {
+    let mut result: Vec<Move> = Vec::new();
+
+    if state.turn == Turn::White {
+        // White kingside castling
+        if state.can_castle_kingside() {
+            result.push(Move {
+                from: 7,
+                to: 5,
+                piece: Piece::Rook, // Rook's piece representation
+                captured: None,
+                castled: true,
+            });
+        }
+
+        // White queenside castling
+        if state.can_castle_queenside() {
+            result.push(Move {
+                from: 0,
+                to: 3,
+                piece: Piece::Rook, // Rook's piece representation
+                captured: None,
+                castled: true,
+            });
+        }
+    } else if state.turn == Turn::Black {
+        // Black kingside castling
+        if state.can_castle_kingside() {
+            result.push(Move {
+                from: 63,
+                to: 61,
+                piece: Piece::Rook, // Rook's piece representation
+                captured: None,
+                castled: true,
+            });
+        }
+
+        // Black queenside castling
+        if state.can_castle_queenside() {
+            result.push(Move {
+                from: 56,
+                to: 59,
+                piece: Piece::Rook, // Rook's piece representation
+                captured: None,
+                castled: true,
+            });
+        }
+    }
+
+    result
+}
+
+
+pub fn reconstruct_king_move(rook_move: &Move, state: &State) -> Move {
+    let mut king_move = Move {
+        from: 4, // Initial square of the king (e1 for White, e8 for Black)
+        to: 0,   // Placeholder value
+        piece: Piece::King, // King's piece representation
+        captured: None,
+        castled: true,
+    };
+
+    // Determine kingside or queenside castling based on the rook's move
+    if rook_move.from == 0 && rook_move.to == 3 {
+        // White queenside castling
+        king_move.to = 2;
+    } else if rook_move.from == 7 && rook_move.to == 5 {
+        // White kingside castling
+        king_move.to = 6;
+    } else if rook_move.from == 56 && rook_move.to == 59 {
+        // Black queenside castling
+        king_move.from = 60; // Black king starts from e8
+        king_move.to = 58;
+    } else if rook_move.from == 63 && rook_move.to == 61 {
+        // Black kingside castling
+        king_move.from = 60; // Black king starts from e8
+        king_move.to = 62;
+    } else {
+        panic!("Invalid rook move for castling!");
+    }
+    king_move
+}
+
 
 pub fn queen_attacks(occupied: u64, own: u64, square: usize) -> u64 {
     return rook_attacks(occupied, own, square) | bishop_attacks(occupied, own, square);
@@ -701,7 +788,7 @@ mod tests {
         let turn: Turn = Turn::White;
         let mut state: State = State {
             turn,
-            castling: 0,
+            castling_rights: 0,
             enpassant: None,
         };
         assert_eq!(perft(&mut board, &mut state, 1, 1, false), 20);
@@ -716,7 +803,7 @@ mod tests {
         let turn: Turn = Turn::White;
         let mut state: State = State {
             turn,
-            castling: 0,
+            castling_rights: 0,
             enpassant: None,
         };
         assert_eq!(perft(&mut board, &mut state, 1, 1, false), 48);
@@ -729,7 +816,7 @@ mod tests {
         let board = Board::new(Some(fen));
         let state = State {
             turn: Turn::Black,
-            castling: 0,
+            castling_rights: 0,
             enpassant: None,
         };
         (board, state)
@@ -753,6 +840,7 @@ mod tests {
             to: 19,
             piece: Piece::Pawn,
             captured: None,
+            castled:false
         }];
         assert_eq!(moves, expected_moves);
     }
@@ -765,6 +853,7 @@ mod tests {
             to: 19,
             piece: Piece::Pawn,
             captured: None,
+            castled: false
         };
 
         board.draw();
@@ -808,6 +897,7 @@ mod tests {
             to: 19,
             piece: Piece::Pawn,
             captured: Some(Piece::Pawn),
+            castled: false
         };
         assert!(legal_moves.contains(&en_passant_move));
     }
@@ -815,7 +905,7 @@ mod tests {
     #[test]
     fn test_castling() {
         let (mut board, mut state) = setup_board("r3k2r/8/8/8/8/8/8/R3K2R");
-        state.castling = 0b1111; // Both sides can castle both ways
+        state.castling_rights = 0b1111; // Both sides can castle both ways
 
         state.turn = Turn::White;
         let white_castle_moves = generate_legal_moves(&mut board, &mut state);
@@ -844,6 +934,7 @@ mod tests {
                 to: 0,
                 piece: Piece::Pawn,
                 captured: None,
+                castled: false
             }, // Assume it promotes to Queen
         ];
         promotion_moves.iter().for_each(|m| {
