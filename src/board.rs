@@ -30,37 +30,23 @@ lazy_static! {
     };
 }
 
-/// Creates an empty start and with standard starting state
-pub fn empty_start() -> (Board, State) {
-    let board: Board = Board::new(None);
-    let state: State = State::new(None);
-
-    (board, state)
-}
-
 /// Creates a standard starting board
-pub fn standard_start() -> (Board, State) {
-    let (board, state) = parse_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-
-    (board, state)
+pub fn standard_start() -> Board {
+    let board = Board::new(Some(
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    ));
+    board
 }
 
-/// Parses a FEN and returns a board and a state reflecting this FEN
-pub fn parse_fen(fen_string: &str) -> (Board, State) {
-    let split = fen_string.split(" ").collect::<Vec<&str>>();
-
-    let board: Board = Board::new(Some(split[0]));
-    let state: State = State::new(Some((split[1], split[2], split[3])));
-
-    (board, state)
-}
-
-/// castling:
+/// castling:<br>
+/// ```
 /// 0 b 0 0 0 0
 ///     K Q k q
+/// ```
+#[derive(Clone)]
 pub struct State {
     pub turn: Turn,
-    pub castling_rights: u8, 
+    pub castling_rights: u8,
     pub enpassant: Option<u8>,
 }
 
@@ -73,7 +59,7 @@ impl State {
                 "b" => Turn::Black,
                 _ => panic!("{turn} is not a valid turn indicator"),
             };
-            let mut castle = 0;
+            let castling = 0;
             // Calculate castling rights
             let mut castling = 0;
             if castling_string.contains('K') {
@@ -93,7 +79,7 @@ impl State {
 
             State {
                 turn: whose_turn,
-                castling_rights: castle,
+                castling_rights: castling,
                 enpassant: enpassent_square,
             }
         } else {
@@ -104,7 +90,7 @@ impl State {
             }
         }
     }
-    /// whether the current player can castle
+    /// whether the current player can castle kingside
     pub fn can_castle_kingside(&self) -> bool {
         match self.turn {
             Turn::White => (self.castling_rights & 0b0100) != 0,
@@ -112,46 +98,16 @@ impl State {
         }
     }
 
-    /// whether the current player can castle
+    /// whether the current player can castle queenside
     pub fn can_castle_queenside(&self) -> bool {
         match self.turn {
             Turn::White => (self.castling_rights & 0b1000) != 0,
             Turn::Black => (self.castling_rights & 0b0010) != 0,
         }
     }
-    /// updates the state with regards to castling    
-    pub fn castle_kingside(&mut self) {
-        match self.turn {
-            Turn::White => {
-                self.castling_rights &= !0b0100; // Clear white kingside castling right
-            }
-            Turn::Black => {
-                self.castling_rights &= !0b0001; // Clear black kingside castling right
-            }
-        }
-    }
-    /// updates the state with regards to castling
-    pub fn castle_queenside(&mut self) {
-        match self.turn {
-            Turn::White => {
-                self.castling_rights &= !0b1000; // Clear white queenside castling right
-            }
-            Turn::Black => {
-                self.castling_rights &= !0b0010; // Clear black queenside castling right
-            }
-        }
-    }
-
-    pub fn perform_castle(&mut self, kingside: bool) {
-        if kingside {
-            self.castle_kingside();
-        } else {
-            self.castle_queenside();
-        }
-    }
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Turn {
     White,
     Black,
@@ -164,16 +120,27 @@ pub enum Turn {
 /// black: p: 6,  r: 7,  k: 8,  n: 9,  q: 10,  b: 11'
 pub struct Board {
     pub bitboards: Box<[u64; 12]>,
+    pub state_history: Vec<State>,
+    pub current_state: State,
 }
 
 impl Board {
     pub fn new(fen_string: Option<&str>) -> Self {
+        let initial_state = State::new(None);
         let mut board = Self {
             bitboards: Box::new([0; 12]),
+            state_history: vec![initial_state.clone()],
+            current_state: initial_state,
         };
+        
         if let Some(fen) = fen_string {
-            board.parse_fen(fen);
+            let split = fen.split(" ").collect::<Vec<&str>>(); // splits fen string into separate parts
+            let new_state = State::new(Some((split[1], split[2], split[3])));
+            board.parse_fen(split[0]);
+            board.current_state = new_state.clone();
+            board.state_history = vec![new_state];
         }
+        
         board
     }
 
@@ -249,5 +216,32 @@ impl Board {
                 _ => {}
             }
         }
+    }
+    /// Returns a bitboard of all white pieces on the board.
+    ///
+    /// This function combines the bitboards of white pieces (pawns, knights, bishops, rooks, queens, kings)
+    /// into a single bitboard and returns it.
+    pub fn all_white(&self) -> u64 {
+        let mut res: u64 = 0;
+        for bitboard in &self.bitboards[0..6] {
+            res |= bitboard; // ORs together all white boards
+        }
+        res
+    }
+
+    /// Returns a bitboard of all black pieces on the board.
+    ///
+    /// This function combines the bitboards of black pieces (pawns, knights, bishops, rooks, queens, kings)
+    /// into a single bitboard and returns it.
+    pub fn all_black(&self) -> u64 {
+        let mut res: u64 = 0;
+        for bitboard in &self.bitboards[6..12] {
+            res |= bitboard; // ORs together all black boards
+        }
+        res
+    }
+
+    pub fn occupied(&self) -> u64 {
+        return self.all_black() | self.all_white();
     }
 }

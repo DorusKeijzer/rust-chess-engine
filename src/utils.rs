@@ -157,6 +157,8 @@ pub fn draw_bb(bb: u64) {
 
 #[cfg(test)]
 mod tests {
+    use crate::board::State;
+
     use super::*;
 
     #[test]
@@ -196,6 +198,8 @@ mod tests {
                 0b0000_0100_0000_0000,
                 0b0000_1000_0000_0000,
             ]),
+            current_state: State::new(None),
+            state_history: vec![State::new(None)]
         };
         assert_eq!(find_bitboard(&bitboards, 0), Some(0));
         assert_eq!(find_bitboard(&bitboards, 1), Some(1));
