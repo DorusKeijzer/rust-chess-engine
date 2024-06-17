@@ -97,7 +97,6 @@ impl State {
             Turn::Black => (self.castling_rights & 0b0001) != 0,
         }
     }
-
     /// whether the current player can castle queenside
     pub fn can_castle_queenside(&self) -> bool {
         match self.turn {

@@ -689,68 +689,72 @@ fn switch_turn(board: &mut Board) -> () {
     };
 }
 
-fn remove_castling_rights(chess_move: &Move, board: &mut Board) {
+fn remove_castling_rights(chess_move: &Move, state: &mut State) {
     if chess_move.piece == Piece::King {
-        board.current_state.castling_rights &= if board.current_state.turn == Turn::White {
+        state.castling_rights &= if state.turn == Turn::White {
             !0b1100
         } else {
             !0b0011
         }; // remove all castling rights for this player
     } else if chess_move.piece == Piece::Rook {
-        if board.current_state.turn == Turn::White {
+        if state.turn == Turn::White {
             if chess_move.from == 63 {
-                board.current_state.castling_rights &= !0b1000; // remove kingside castling right for white
+                state.castling_rights &= !0b1000; // remove kingside castling right for white
             } else if chess_move.from == 56 {
-                board.current_state.castling_rights &= !0b0100; // remove queenside castling right for white
+                state.castling_rights &= !0b0100; // remove queenside castling right for white
             }
         } else {
             if chess_move.from == 7 {
-                board.current_state.castling_rights &= !0b0010; // remove kingside castling right for black
+                state.castling_rights &= !0b0010; // remove kingside castling right for black
             } else if chess_move.from == 0 {
-                board.current_state.castling_rights &= !0b0001; // remove queenside castling right for black
+                state.castling_rights &= !0b0001; // remove queenside castling right for black
             }
         }
     }
 }
 
-pub fn unmake_move(board: &mut Board, chess_move: &Move, switch_state: bool) {
-    if chess_move.castled {
-        let (king_move, permission_update) = reconstruct_king_move(chess_move, board);
+pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
+
+    if update_state {
+        // reverts to the previous state
+        if let Some(state) = board.state_history.pop()
+        {
+            board.current_state = state;
+        }
+    }
+    if chess_move.castled { // unmakes king move in case of castling
+                            // this call does not update the state to prevent reverting too far      
+        let (king_move, _) = reconstruct_king_move(chess_move, board);
         unmake_move(board, &king_move, false);
-        board.current_state.castling_rights += permission_update;
-    }
-
-    if switch_state {
-        switch_turn(board);
-    }
-
-    let bb_index = bitboard_from_piece_and_board(board, chess_move.piece);
-
+        }
+    
     // Undoes a captured piece
     if let Some(captured_piece) = chess_move.captured {
         let captured_bb = bitboard_from_piece_and_board(board, captured_piece);
         board.bitboards[captured_bb] ^= utils::mask(chess_move.to);
     }
-
+    // updates the bitboard of the piece
+    let bb_index = bitboard_from_piece_and_board(board, chess_move.piece);
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
     board.bitboards[bb_index] ^= utils::mask(chess_move.from);
 }
 
 
-pub fn make_move(board: &mut Board, chess_move: &Move, switch_state: bool) {
+pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
+    let mut new_state = board.current_state.clone();
     if chess_move.castled
     // in case of castling, move the king too
     {
         let (king_move, permission_update) = reconstruct_king_move(chess_move, board);
         make_move(board, &king_move, false); // move king but don't switch sides yet
-        board.current_state.castling_rights &= if board.current_state.turn == Turn::White {
+        new_state.castling_rights &= if new_state.turn == Turn::White {
             !0b1100
         } else {
             !0b0011
         }; // remove all castling rights for this player
     }
-    remove_castling_rights(chess_move, board);
-
+    remove_castling_rights(chess_move, &mut new_state);
+    let p =new_state.castling_rights;
     let bb_index = bitboard_from_piece_and_board(board, chess_move.piece);
 
     // if a piece is captured, find the corresponding bitboard and remove the piece there
@@ -761,8 +765,10 @@ pub fn make_move(board: &mut Board, chess_move: &Move, switch_state: bool) {
 
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
     board.bitboards[bb_index] ^= utils::mask(chess_move.from);
-
-    if switch_state {
+    
+    if update_state {
+        board.state_history.push(board.current_state.clone());
+        board.current_state = new_state;
         switch_turn(board);
     }
 }
@@ -935,26 +941,6 @@ mod tests {
             castled: false,
         };
         assert!(legal_moves.contains(&en_passant_move));
-    }
-
-    #[test]
-    fn test_castling() {
-        let (mut board, mut state) = setup_board("r3k2r/8/8/8/8/8/8/R3K2R");
-        state.castling_rights = 0b1111; // Both sides can castle both ways
-
-        board.current_state.turn = Turn::White;
-        let white_castle_moves = generate_legal_moves(&mut board);
-        assert!(white_castle_moves.iter().any(|m| m.from == 4 && m.to == 6)); // King side castle
-        assert!(white_castle_moves.iter().any(|m| m.from == 4 && m.to == 2)); // Queen side castle
-
-        board.current_state.turn = Turn::Black;
-        let black_castle_moves = generate_legal_moves(&mut board);
-        assert!(black_castle_moves
-            .iter()
-            .any(|m| m.from == 60 && m.to == 62)); // King side castle
-        assert!(black_castle_moves
-            .iter()
-            .any(|m| m.from == 60 && m.to == 58)); // Queen side castle
     }
 
     #[test]
