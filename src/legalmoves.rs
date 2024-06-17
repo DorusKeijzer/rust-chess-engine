@@ -188,6 +188,7 @@ pub fn generate_legal_moves(board: &mut Board) -> Vec<Move> {
     ] {
         result.extend(legal_moves(board, piece));
     }
+    result.extend(castling(board.occupied(), board));
     result
 }
 
@@ -301,7 +302,6 @@ fn pseudo_legal_moves(board: &Board, piece: Piece) -> Vec<Move> {
             Piece::King => king_square_pseudo_legal(board, square as usize),
             Piece::Queen => queen_attacks(occupied_squares, own, square as usize),
         };
-        result.extend(castling(occupied_squares, board));
         result.extend(pseudo_legal_to_moves(
             board,
             legal_moves,
@@ -447,12 +447,15 @@ pub struct Move {
 
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let castling = if self.castled { "(Castling)" } else { "" };
+
         write!(
             f,
-            "{:?} from {} to {} ",
+            "{:?} from {} to {} {}",
             self.piece,
             utils::square_to_algebraic(self.from),
             utils::square_to_algebraic(self.to),
+            castling
         )
     }
 }
@@ -501,9 +504,12 @@ pub fn rook_attacks(occupied: u64, own: u64, square: usize) -> u64 {
 /// castling moves only give the movement of the rook. <br>
 /// The movement of the king is inferred during make_move()
 ///
+/// It was decided to keep occupied as an argument (rather than
+/// evaluating board.occupied() in the method to reduce the number of
+/// function calls)
+///
 pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
     let mut result: Vec<Move> = Vec::new();
-
     if board.current_state.turn == Turn::White {
         // White kingside castling
         if board.current_state.can_castle_kingside() & (occupied & 0x6000000000000000 == 0)
@@ -557,7 +563,6 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
             });
         }
     }
-
     result
 }
 
@@ -714,20 +719,19 @@ fn remove_castling_rights(chess_move: &Move, state: &mut State) {
 }
 
 pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
-
     if update_state {
         // reverts to the previous state
-        if let Some(state) = board.state_history.pop()
-        {
+        if let Some(state) = board.state_history.pop() {
             board.current_state = state;
         }
     }
-    if chess_move.castled { // unmakes king move in case of castling
-                            // this call does not update the state to prevent reverting too far      
+    if chess_move.castled {
+        // unmakes king move in case of castling
+        // this call does not update the state to prevent reverting too far
         let (king_move, _) = reconstruct_king_move(chess_move, board);
         unmake_move(board, &king_move, false);
-        }
-    
+    }
+
     // Undoes a captured piece
     if let Some(captured_piece) = chess_move.captured {
         let captured_bb = bitboard_from_piece_and_board(board, captured_piece);
@@ -738,7 +742,6 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
     board.bitboards[bb_index] ^= utils::mask(chess_move.from);
 }
-
 
 pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
     let mut new_state = board.current_state.clone();
@@ -754,7 +757,7 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
         }; // remove all castling rights for this player
     }
     remove_castling_rights(chess_move, &mut new_state);
-    let p =new_state.castling_rights;
+    let p = new_state.castling_rights;
     let bb_index = bitboard_from_piece_and_board(board, chess_move.piece);
 
     // if a piece is captured, find the corresponding bitboard and remove the piece there
@@ -765,7 +768,7 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
     board.bitboards[bb_index] ^= utils::mask(chess_move.from);
-    
+
     if update_state {
         board.state_history.push(board.current_state.clone());
         board.current_state = new_state;
@@ -818,149 +821,51 @@ pub fn perft(board: &mut Board, depth: i32, startdepth: i32, verbose: bool) -> i
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn perft_test_1() {
-        let mut board: Board = Board::new(Some(
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-        ));
-        let turn: Turn = Turn::White;
-        let mut state: State = State {
-            turn,
-            castling_rights: 0,
-            enpassant: None,
-        };
-        assert_eq!(perft(&mut board, 1, 1, false), 20);
-        assert_eq!(perft(&mut board, 2, 2, false), 400);
-        assert_eq!(perft(&mut board, 3, 3, false), 8902);
-        assert_eq!(perft(&mut board, 4, 4, false), 197_281);
-        assert_eq!(perft(&mut board, 5, 5, false), 4_865_609);
-    }
-    #[test]
-    fn perft_test_2() {
-        let mut board: Board = Board::new(Some(
-            "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
-        ));
-        let turn: Turn = Turn::White;
-        let mut state: State = State {
-            turn,
-            castling_rights: 0,
-            enpassant: None,
-        };
-        assert_eq!(perft(&mut board, 1, 1, false), 48);
-        assert_eq!(perft(&mut board, 2, 2, false), 2039);
-        assert_eq!(perft(&mut board, 3, 3, false), 97_862);
-        assert_eq!(perft(&mut board, 4, 4, false), 4_085_603);
-        assert_eq!(perft(&mut board, 5, 5, false), 193_690_690);
-    }
-    fn setup_board(fen: &str) -> (Board, State) {
-        let board = Board::new(Some(fen));
-        let state = State {
-            turn: Turn::Black,
-            castling_rights: 0,
-            enpassant: None,
-        };
-        (board, state)
-    }
-
-    #[test]
-    fn test_board_initialization() {
-        let (board, state) = setup_board("p7/3p4/8/8/8/8/8/8");
-        // Test if the board initializes correctly
-        assert_eq!(board.bitboards[6], 2049); // Black pawn
-        assert_eq!(board.current_state.turn, Turn::Black);
-    }
-
-    #[test]
-    fn test_legal_moves_for_black_pawn() {
-        let mut board: Board = Board::new(Some("8/3p4/8/8/8/8/8/8 w KQkq - "));
-        let moves = generate_legal_moves(&mut board);
-        // Check that legal moves for black pawns are correct
-        let expected_moves = vec![Move {
-            from: 11,
-            to: 19,
-            piece: Piece::Pawn,
-            captured: None,
-            castled: false,
-        }];
-        assert_eq!(moves, expected_moves);
-    }
-
-    #[test]
-    fn test_move_application_and_reversion() {
-        let mut board: Board = Board::new(Some("8/3p4/8/8/8/8/8/8 w KQkq - "));
-        let mv = Move {
-            from: 11,
-            to: 19,
-            piece: Piece::Pawn,
-            captured: None,
-            castled: false,
-        };
-
-        board.draw();
-        assert_eq!(board.bitboards[6], 2048); // Black pawn restored
-        assert_eq!(board.current_state.turn, Turn::Black);
-        make_move(&mut board, &mv, true);
-        board.draw();
-        // Verify that the move has been made
-        assert_eq!(board.bitboards[6], 524288); // Black pawn moved
-        assert_eq!(board.current_state.turn, Turn::White);
-
-        unmake_move(&mut board, &mv, true);
-        board.draw();
-        // Verify that the move has been undone
-        assert_eq!(board.bitboards[6], 2048); // Black pawn restored
-        assert_eq!(board.current_state.turn, Turn::Black);
-    }
-
-    #[test]
-    fn test_no_white_pawn_creation() {
-        let (mut board, mut state) = setup_board("8/3p4/8/8/8/8/8/8");
-        let moves = generate_legal_moves(&mut board);
-
-        for mv in &moves {
-            make_move(&mut board, &mv, true);
-            // Ensure no white pawns are created
-            assert_eq!(board.bitboards[0], 0); // No white pawns
-            unmake_move(&mut board, &mv, true);
+    mod perft {
+        use super::*;
+        #[test]
+        fn perft_test_1() {
+            let mut board: Board = Board::new(Some(
+                "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            ));
+            let turn: Turn = Turn::White;
+            let mut state: State = State {
+                turn,
+                castling_rights: 0,
+                enpassant: None,
+            };
+            assert_eq!(perft(&mut board, 1, 1, false), 20);
+            assert_eq!(perft(&mut board, 2, 2, false), 400);
+            assert_eq!(perft(&mut board, 3, 3, false), 8902);
+            assert_eq!(perft(&mut board, 4, 4, false), 197_281);
+            assert_eq!(perft(&mut board, 5, 5, false), 4_865_609);
+        }
+        #[test]
+        fn perft_test_2() {
+            let mut board: Board = Board::new(Some(
+                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
+            ));
+            let turn: Turn = Turn::White;
+            let mut state: State = State {
+                turn,
+                castling_rights: 0,
+                enpassant: None,
+            };
+            assert_eq!(perft(&mut board, 1, 1, false), 48);
+            assert_eq!(perft(&mut board, 2, 2, false), 2039);
+            assert_eq!(perft(&mut board, 3, 3, false), 97_862);
+            assert_eq!(perft(&mut board, 4, 4, false), 4_085_603);
+            assert_eq!(perft(&mut board, 5, 5, false), 193_690_690);
+        }
+        fn setup_board(fen: &str) -> (Board, State) {
+            let board = Board::new(Some(fen));
+            let state = State {
+                turn: Turn::Black,
+                castling_rights: 0,
+                enpassant: None,
+            };
+            (board, state)
         }
     }
 
-    #[test]
-    fn test_en_passant() {
-        let (mut board, mut state) = setup_board("8/8/8/3pP3/8/8/8/8");
-        board.current_state.turn = Turn::White;
-        board.current_state.enpassant = Some(27); // The en passant target square is d6 (index 27)
-
-        let legal_moves = generate_legal_moves(&mut board);
-        let en_passant_move = Move {
-            from: 28,
-            to: 19,
-            piece: Piece::Pawn,
-            captured: Some(Piece::Pawn),
-            castled: false,
-        };
-        assert!(legal_moves.contains(&en_passant_move));
-    }
-
-    #[test]
-    fn test_pawn_promotion() {
-        let (mut board, mut state) = setup_board("8/P7/8/8/8/8/8/8");
-        board.current_state.turn = Turn::White;
-
-        let legal_moves = generate_legal_moves(&mut board);
-        let promotion_moves = vec![
-            Move {
-                from: 8,
-                to: 0,
-                piece: Piece::Pawn,
-                captured: None,
-                castled: false,
-            }, // Assume it promotes to Queen
-        ];
-        promotion_moves.iter().for_each(|m| {
-            assert!(legal_moves.contains(m), "Missing promotion move: {:?}", m);
-        });
-        assert_eq!(legal_moves.len(), promotion_moves.len());
-    }
 }

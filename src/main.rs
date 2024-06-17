@@ -15,13 +15,6 @@ use legalmoves::make_move;
 use legalmoves::rook_attacks;
 use legalmoves::unmake_move;
 
-/// TODO:   1. if non castling move, lose castling rights
-///             a. king
-///             b. rook
-///     	2. double check castling rights
-///         3. if castling move is made, reconstruct and make king move
-///             a. make_move
-///             b. unmake_move
 fn main() {
     let mut board = Board::new(Some("r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1"));
     board.draw();
@@ -47,6 +40,34 @@ mod tests {
     use super::*;
     mod castling_tests {
         use super::*;
+        #[test]
+        fn castling_in_make_moves_for_white() {
+            let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/R3K2R w KQ - 0 1"));
+            let rook_move = Move {
+                from: 63,
+                to: 61,
+                piece: Piece::Rook, // Rook
+                captured: None,
+                castled: true,
+            };
+            let moves = legalmoves::generate_legal_moves(&mut board);
+
+            assert!(moves.contains(&rook_move));
+        }
+        #[test]
+        fn castling_in_make_moves_for_black() {
+            let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/R3K2R b kqKQ - 0 1"));
+            let rook_move = Move {
+                from: 0,
+                to: 3,
+                piece: Piece::Rook, // Rook
+                captured: None,
+                castled: true,
+            };
+            let moves = legalmoves::generate_legal_moves(&mut board);
+
+            assert!(moves.contains(&rook_move));
+        }
         #[test]
         fn test_non_castling_move_loses_castling_rights_king() {
             let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/R3K2R b KQ - 0 1"));
@@ -77,9 +98,7 @@ mod tests {
                 captured: None,
                 castled: false,
             };
-            board.draw();
             make_move(&mut board, &rook_move, true);
-            board.draw();
             assert_eq!(board.current_state.castling_rights & 0b1000, 0b0000); // White lost kingside castling right
             assert_eq!(board.current_state.castling_rights & 0b0100, 0b0100); // White still has queenside castling right
         }
@@ -149,5 +168,10 @@ mod tests {
             assert_eq!(board.current_state.castling_rights, 0b1100); // Castling rights should be restored
             assert_eq!(board.current_state.turn, Turn::White); // It should still be White's turn
         }
+    }
+
+    
+    mod enpassant_tests {
+        use super::*;
     }
 }

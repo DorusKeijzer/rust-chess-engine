@@ -188,7 +188,6 @@ impl Board {
 
     #[allow(dead_code)]
     pub fn parse_fen(&mut self, fenstring: &str) {
-        println!("{}", fenstring);
         // because fen strings do not obey little endian notation,
         // we have to mirror the substrings of each rank
         let split_fen: Vec<&str> = fenstring.split("/").collect();
