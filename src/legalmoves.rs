@@ -581,7 +581,7 @@ pub fn castling(state: &State) -> Vec<Move> {
 
 pub fn reconstruct_king_move(rook_move: &Move, state: &State) -> Move {
     let mut king_move = Move {
-        from: 4,            // Initial square of the king (e1 for White, e8 for Black)
+        from: if state.turn == Turn::White {60} else {4},            // Initial square of the king (e1 for White, e8 for Black)
         to: 0,              // Placeholder value
         piece: Piece::King, // King's piece representation
         captured: None,
@@ -590,18 +590,16 @@ pub fn reconstruct_king_move(rook_move: &Move, state: &State) -> Move {
 
     // Determine kingside or queenside castling based on the rook's move
     if rook_move.from == 0 && rook_move.to == 3 {
-        // White queenside castling
+        // Black queenside castling
         king_move.to = 2;
     } else if rook_move.from == 7 && rook_move.to == 5 {
-        // White kingside castling
+        // Black kingside castling
         king_move.to = 6;
     } else if rook_move.from == 56 && rook_move.to == 59 {
-        // Black queenside castling
-        king_move.from = 60; // Black king starts from e8
+        // White queenside castling
         king_move.to = 58;
     } else if rook_move.from == 63 && rook_move.to == 61 {
-        // Black kingside castling
-        king_move.from = 60; // Black king starts from e8
+        // White kingside castling
         king_move.to = 62;
     } else {
         panic!("Invalid rook move for castling!");
