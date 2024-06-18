@@ -25,6 +25,20 @@ $pythonOutput = & python $pythonScriptPath $argument
 $rustOutput = & $rustExecutablePath script $argument 
 # Write-Host "Rust Output:`n$rustOutput"
 
+
+# Split the outputs into arrays of lines
+$pythonLines = $pythonOutput -split "`n"
+$rustLines = $rustOutput -split "`n"
+
+# Get the last line of each output
+$lastPythonLine = $pythonLines[-1]
+$lastRustLine = $rustLines[-1]
+
+if ($lastPythonLine -eq $lastRustLine)
+{
+Write-Host "Same number of moves"
+}
+
 # Split the outputs into arrays of lines
 $pythonLines = $pythonOutput -split "`n"
 $rustLines = $rustOutput -split "`n"
