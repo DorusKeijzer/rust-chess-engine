@@ -2,7 +2,7 @@ use core::panic;
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 
-use crate::utils;
+use crate::utils::{self, square_to_algebraic};
 
 pub const NUMBER_CHARACTERS: usize = 12;
 pub const PIECE_CHARACTERS: [char; 12] =
@@ -143,6 +143,20 @@ impl Board {
         board
     }
 
+    pub fn printstate(&self)
+    {
+        let turn = self.current_state.turn;
+        let castling_rights = self.current_state.castling_rights; 
+        let ep = "None";
+        if let Some(square) = self.current_state.enpassant 
+        {
+           let ep = square_to_algebraic(square).as_str();
+        }
+
+        println!("Turn: {turn:?}");
+        println!("Castling rights: {castling_rights:b}");
+        println!("En passant square: {ep}");
+    }
     pub fn draw(&self) {
         println!("");
         println!("     A  B  C  D  E  F  G  H");

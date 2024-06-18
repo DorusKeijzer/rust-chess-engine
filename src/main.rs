@@ -15,6 +15,7 @@ use crate::{
 use legalmoves::{make_move, perft};
 use legalmoves::rook_attacks;
 use legalmoves::unmake_move;
+use utils::{algebraic_to_square, square_to_algebraic};
 
 /// TODO prio order:
 /// Investigate if there is a problem with pawn captures
@@ -51,15 +52,21 @@ fn main() {
         "default" =>  
         {
             let board = Board::new(Some(fen));
+            board.draw();
+            board.printstate();
+            let square = algebraic_to_square("e5").unwrap();
+            let knightmoves = !board.all_white() & legalmoves::KNIGHT_MOVES[square as usize];
+            draw_bb(knightmoves);
 
         }
         "script" => 
         {
             let mut board = Board::new(Some(fen));
+            board.draw();
             let p: i32 = perft(&mut board, 1, 1, true);
             println!("{p}");
 
-        }
+        }   
         _ => {println!("Not a valid mode :^)")}
     }
 }

@@ -225,17 +225,28 @@ fn legal_moves(board: &mut Board, piece: Piece) -> Vec<Move> {
     let mut result = vec![];
     // makes move and if king not in check, push to results
     for chess_move in moves {
-        make_move(board, &chess_move, true);
-        if !check(board) {
+        make_move(board, &chess_move, false); // don't update state so we won't run check() for the wrong color
+                                              // if piece == Piece::Knight {
+                                              //     println!("{chess_move}");
+                                              //     if !check(board, true) {
+                                              //         result.push(chess_move)
+                                              //     }
+                                              // } else {
+                                              //     if !check(board, false) {
+                                              //         result.push(chess_move)
+                                              //     }
+                                              // }
+        if !check(board, false) {
             result.push(chess_move)
         }
-        unmake_move(board, &chess_move, true);
+
+        unmake_move(board, &chess_move, false); // update_state is false for the same reasons
     }
 
     return result;
 }
 
-fn check(board: &mut Board) -> bool {
+fn check(board: &mut Board, draw: bool) -> bool {
     // king:  blacks king if black to move
     // offset:  white pieces if black to move
     // own: blacks pieces if black to move
@@ -277,6 +288,16 @@ fn check(board: &mut Board) -> bool {
         }
     }
     // true if attack patterns intersect the king
+    if draw {
+        println!("king");
+        draw_bb(king);
+        println!("own");
+        draw_bb(own);
+        println!("attacks");
+        draw_bb(attacks);
+        println!("king & attacks");
+        draw_bb(king & attacks);
+    }
     return (king & attacks) != 0;
 }
 
@@ -819,7 +840,7 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 pub fn perft(board: &mut Board, depth: i32, startdepth: i32, verbose: bool) -> i32 {
     if depth == 0 {
         return 1;
-    }
+    }   
 
     let moves = generate_legal_moves(board);
     let mut num_moves: i32 = 0;
