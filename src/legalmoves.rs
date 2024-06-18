@@ -431,7 +431,7 @@ fn bitboard_index_from_square(board: Board, square: u8) -> Option<u8> {
     }
     return None;
 }
-
+/// All pseudo legal, non promoting, non castling moves
 fn pseudo_legal_to_moves(board: &Board, bitboard: u64, from_square: u8, piece: Piece) -> Vec<Move> {
     let mut moves = Vec::new();
     let bitboard = bitboard;
@@ -448,6 +448,7 @@ fn pseudo_legal_to_moves(board: &Board, bitboard: u64, from_square: u8, piece: P
                 from: from_square,
                 to: to_square as u8,
                 piece: piece,
+                promotion: None,
                 captured: captured_piece,
                 castled: false,
             })
@@ -461,7 +462,7 @@ pub struct Move {
     pub from: u8, // Source square (0-63)
     pub to: u8,   // Destination square (0-63)
     pub piece: Piece,
-    // pub promotion: Option<Piece>, // Optional promotion piece
+    pub promotion: Option<Piece>, // Optional promotion piece
     pub captured: Option<Piece>, // Optional captured piece
     pub castled: bool, // whether castling happened in this turn (responsible for moving king)
 }
@@ -570,6 +571,7 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
                 from: 63,
                 to: 61,
                 piece: Piece::Rook, // Rook's piece representation
+                promotion: None,
                 captured: None,
                 castled: true,
             });
@@ -583,6 +585,7 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
                 from: 56,
                 to: 59,
                 piece: Piece::Rook, // Rook's piece representation
+                promotion: None,
                 captured: None,
                 castled: true,
             });
@@ -596,6 +599,7 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
                 from: 7,
                 to: 5,
                 piece: Piece::Rook, // Rook's piece representation
+                promotion: None,
                 captured: None,
                 castled: true,
             });
@@ -609,6 +613,7 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
                 from: 0,
                 to: 3,
                 piece: Piece::Rook, // Rook's piece representation
+                promotion: None,
                 captured: None,
                 castled: true,
             });
@@ -627,6 +632,7 @@ pub fn reconstruct_king_move(rook_move: &Move, board: &Board) -> (Move, u8) {
         to: 0,              // Placeholder value
         piece: Piece::King, // King's piece representation
         captured: None,
+        promotion: None,
         castled: false, // false allows for recursiive function call in (un)make_move()
     };
     // permission relevant to this castling so we can update the state

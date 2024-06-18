@@ -18,9 +18,6 @@ use legalmoves::unmake_move;
 use utils::{algebraic_to_square, square_to_algebraic};
 
 /// TODO prio order:
-/// Investigate if there is a problem with pawn captures
-///     1. Generate tests for pawn captures
-///     2. if tests fail, fix pawn captures
 /// Implement promotion
 ///     1. Generate tests for promotions
 ///     2. update struct and functions to accomodate promotions
@@ -84,6 +81,7 @@ mod tests {
                 to: 61,
                 piece: Piece::Rook, // Rook
                 captured: None,
+                promotion: None,
                 castled: true,
             };
             let moves = legalmoves::generate_legal_moves(&mut board);
@@ -98,6 +96,7 @@ mod tests {
                 to: 3,
                 piece: Piece::Rook, // Rook
                 captured: None,
+                promotion: None,
                 castled: true,
             };
             let moves = legalmoves::generate_legal_moves(&mut board);
@@ -114,6 +113,7 @@ mod tests {
                 to: 12,
                 piece: Piece::King, // King
                 captured: None,
+                promotion: None,
                 castled: false,
             };
 
@@ -132,6 +132,7 @@ mod tests {
                 to: 55,
                 piece: Piece::Rook, // Rook
                 captured: None,
+                promotion: None,
                 castled: false,
             };
             make_move(&mut board, &rook_move, true);
@@ -148,6 +149,7 @@ mod tests {
                 to: 61,
                 piece: Piece::Rook, // Rook
                 captured: None,
+                promotion: None,
                 castled: true,
             };
 
@@ -166,6 +168,7 @@ mod tests {
                 to: 61,
                 piece: Piece::Rook, // Rook
                 captured: None,
+                promotion: None,
                 castled: true,
             };
 
@@ -189,6 +192,7 @@ mod tests {
                 to: 59,
                 piece: Piece::Rook, // Rook
                 captured: None,
+                promotion: None,
                 castled: true,
             };
 
@@ -229,6 +233,7 @@ mod tests {
                 to: algebraic_to_square( "e5").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
+                promotion: None,
                 castled: false, 
             };
 
@@ -246,6 +251,7 @@ mod tests {
                 to: algebraic_to_square( "e5").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
+                promotion: None,
                 castled: false, 
             };
             let pawn_capture_2 = Move
@@ -254,6 +260,7 @@ mod tests {
                 to: algebraic_to_square( "c5").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
+                promotion: None,
                 castled: false, 
             };
             board.draw();
@@ -272,6 +279,7 @@ mod tests {
                 to: algebraic_to_square( "d4").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
+                promotion: None,
                 castled: false, 
             };
 
@@ -288,6 +296,7 @@ mod tests {
                 to: algebraic_to_square( "d4").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
+                promotion: None,
                 castled: false, 
             };
 
@@ -297,6 +306,7 @@ mod tests {
                 to: algebraic_to_square( "b4").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
+                promotion: None,
                 castled: false, 
             };
 
@@ -327,6 +337,7 @@ mod tests {
                 to,
                 piece: Piece::Pawn,
                 captured: None,
+                promotion: None,
                 castled: false,
             };
             make_move(&mut board, &promotion_move, true);
@@ -363,6 +374,7 @@ mod tests {
                 to,
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn), // Capturing the pawn en passant
+                promotion: None,
                 castled: false,
             };
             make_move(&mut board, &en_passant_move, true);
