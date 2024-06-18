@@ -38,18 +38,15 @@ if ($lastPythonLine -eq $lastRustLine)
 {
 Write-Host "Same number of moves"
 }
-
-# Split the outputs into arrays of lines
-$pythonLines = $pythonOutput -split "`n"
-$rustLines = $rustOutput -split "`n"
-
+else
+{
 # Find lines that are unique to each output
 $uniquePythonLines = $pythonLines | Where-Object { $_ -notin $rustLines }
 $uniqueRustLines = $rustLines | Where-Object { $_ -notin $pythonLines }
-
 # Display the unique lines
 Write-Host "Unique lines in Python output:"
 $uniquePythonLines
 
 Write-Host "Unique lines in Rust output:"
 $uniqueRustLines
+}
