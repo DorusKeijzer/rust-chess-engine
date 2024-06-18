@@ -443,6 +443,25 @@ fn pseudo_legal_to_moves(board: &Board, bitboard: u64, from_square: u8, piece: P
         if let Some(bb_index) = captured_bb {
             captured_piece = piece_from_bitboard_index(bb_index as u8);
         }
+        if piece == Piece::Pawn // promotion logic
+        {
+            if (board.current_state.turn == Turn::White && (0..8).contains(&to_square)) || // if white and on the front row
+            (board.current_state.turn == Turn::Black && (56..64).contains(&to_square)) { // if black and on the back row
+             for promotion_piece in vec![Piece::Queen, Piece::Bishop, Piece::Rook, Piece::Knight] { // add all options for promoting
+                         {
+                        moves.push(Move {
+                            from: from_square,
+                            to: to_square as u8,
+                            piece: piece,
+                            promotion: Some(promotion_piece),
+                            captured: captured_piece,
+                            castled: false,
+                        })
+                    }
+                }
+            }
+        }
+        else
         {
             moves.push(Move {
                 from: from_square,
@@ -796,6 +815,13 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
     }
     // updates the bitboard of the piece
     let bb_index = bitboard_from_piece_and_board(board, chess_move.piece);
+    
+    if chess_move.promotion.is_some()
+    {
+        board.bitboards[bb_index] |= utils::mask(chess_move.to); // remove pawn
+        let promotion_index = bitboard_from_piece_and_board(board, chess_move.promotion.unwrap());
+        board.bitboards[promotion_index] &= !utils::mask(chess_move.to); // add promoted piece
+    }
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
     board.bitboards[bb_index] ^= utils::mask(chess_move.from);
 }
@@ -822,9 +848,17 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
         let captured_bb = bitboard_from_piece_and_board(board, chess_move.captured.unwrap());
         board.bitboards[captured_bb] ^= utils::mask(chess_move.to);
     }
-
+    
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
     board.bitboards[bb_index] ^= utils::mask(chess_move.from);
+    
+    if chess_move.promotion.is_some()
+    {
+        board.bitboards[bb_index] &= !utils::mask(chess_move.to); // remove pawn
+        
+        let promotion_index = bitboard_from_piece_and_board(board, chess_move.promotion.unwrap());
+        board.bitboards[promotion_index] |= utils::mask(chess_move.to); // add promoted piece
+    }
 
     if update_state {
         board.state_history.push(board.current_state.clone());

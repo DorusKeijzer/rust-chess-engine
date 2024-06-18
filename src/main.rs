@@ -18,10 +18,6 @@ use legalmoves::unmake_move;
 use utils::{algebraic_to_square, square_to_algebraic};
 
 /// TODO prio order:
-/// Implement promotion
-///     1. Generate tests for promotions
-///     2. update struct and functions to accomodate promotions
-///     3. etc.
 /// Implement en passant
 ///     1. Generate tests for en passant
 ///     2. update struct and functions to accomodate en passant
@@ -327,8 +323,8 @@ mod tests {
         };
 
         #[test]
-        fn test_white_pawn_promotion() {
-            let mut board = Board::new(Some("rnbqkbnr/1P6/8/8/8/8/8/RNBQKBNR w KQkq - 0 1"));
+        fn test_white_pawn_promotion_queen() {
+            let mut board = Board::new(Some("8/1P6/8/8/8/8/8/8 w KQkq - 0 1"));
             let move_str = "b7b8";
             let from = algebraic_to_square(&move_str[0..2]).unwrap();
             let to = algebraic_to_square(&move_str[2..4]).unwrap();
@@ -337,16 +333,111 @@ mod tests {
                 to,
                 piece: Piece::Pawn,
                 captured: None,
-                promotion: None,
+                promotion: Some(Piece::Queen),
                 castled: false,
             };
             make_move(&mut board, &promotion_move, true);
-
             // Assert board state after promotion
             assert_eq!(
-                board.bitboards[Piece::Queen as usize],
-                0x0000_0000_0000_0002
-            ); // Adjust this according to your board representation
+                board.bitboards[4], // queen must be equal to the square moved to
+                utils::mask(to)
+                
+            ); 
+            assert_eq!(
+                board.bitboards[0], // pawn must be empty
+                0
+
+            );
+        }
+        #[test]
+        fn test_white_pawn_promotion_queen_and_unmake() {
+            let mut board = Board::new(Some("8/1P6/8/8/8/8/8/8 w KQkq - 0 1"));
+            let move_str = "b7b8";
+            let from = algebraic_to_square(&move_str[0..2]).unwrap();
+            let to = algebraic_to_square(&move_str[2..4]).unwrap();
+            let promotion_move = Move {
+                from,
+                to,
+                piece: Piece::Pawn,
+                captured: None,
+                promotion: Some(Piece::Queen),
+                castled: false,
+            };
+            make_move(&mut board, &promotion_move, true);
+            // Assert board state after promotion
+            assert_eq!(
+                board.bitboards[4], // queen must be equal to the square moved to
+                utils::mask(to)
+                
+            ); 
+            assert_eq!(
+                board.bitboards[0], // pawn must be empty
+                0
+            );
+            unmake_move(&mut board, &promotion_move, true);
+            assert_eq!(
+                board.bitboards[0], // pawn must be equal to the square moved from after remaking
+                utils::mask(from)
+                
+            ); 
+            assert_eq!(
+                board.bitboards[4], // queen must now be empty
+                0
+            );
+        }
+        #[test]
+        fn test_black_pawn_promotion_queen() {
+            let mut board = Board::new(Some("8/8/8/8/8/8/1p6/8 b KQkq - 0 1"));
+            let move_str = "b2b1";
+            let from = algebraic_to_square(&move_str[0..2]).unwrap();
+            let to = algebraic_to_square(&move_str[2..4]).unwrap();
+            let promotion_move = Move {
+                from,
+                to,
+                piece: Piece::Pawn,
+                captured: None,
+                promotion: Some(Piece::Queen),
+                castled: false,
+            };
+            make_move(&mut board, &promotion_move, true);
+            // Assert board state after promotion
+            assert_eq!(
+                board.bitboards[10], // queen must be equal to the square moved to
+                utils::mask(to)
+                
+            ); 
+            assert_eq!(
+                board.bitboards[6], // pawn must be empty
+                0
+
+            );
+        }
+        #[test]
+        fn test_white_pawn_promotion_bishop() {
+            let mut board = Board::new(Some("8/1P6/8/8/8/8/8/8 w KQkq - 0 1"));
+            let move_str = "b7b8";
+            let from = algebraic_to_square(&move_str[0..2]).unwrap();
+            let to = algebraic_to_square(&move_str[2..4]).unwrap();
+            let promotion_move = Move {
+                from,
+                to,
+                piece: Piece::Pawn,
+                captured: None,
+                promotion: Some(Piece::Bishop),
+                castled: false,
+            };
+            make_move(&mut board, &promotion_move, true);
+            // Assert board state after promotion
+            assert_eq!(
+                board.bitboards[5], // bishop must be equal to the square moved to
+                utils::mask(to)
+                
+            ); 
+            assert_eq!(
+                board.bitboards[0], // pawn must be empty
+                0
+
+            );
         }
 
         // Add more tests for black pawn promotions if needed
