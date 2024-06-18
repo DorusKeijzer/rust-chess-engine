@@ -226,16 +226,6 @@ fn legal_moves(board: &mut Board, piece: Piece) -> Vec<Move> {
     // makes move and if king not in check, push to results
     for chess_move in moves {
         make_move(board, &chess_move, false); // don't update state so we won't run check() for the wrong color
-                                              // if piece == Piece::Knight {
-                                              //     println!("{chess_move}");
-                                              //     if !check(board, true) {
-                                              //         result.push(chess_move)
-                                              //     }
-                                              // } else {
-                                              //     if !check(board, false) {
-                                              //         result.push(chess_move)
-                                              //     }
-                                              // }
         if !check(board, false) {
             result.push(chess_move)
         }
@@ -443,26 +433,26 @@ fn pseudo_legal_to_moves(board: &Board, bitboard: u64, from_square: u8, piece: P
         if let Some(bb_index) = captured_bb {
             captured_piece = piece_from_bitboard_index(bb_index as u8);
         }
-        if piece == Piece::Pawn // promotion logic
+        // promotion logic: in the case that a pawn piece is on the opposite row, add all possible promotions to legal moves.
+        if piece ==Piece::Pawn &&  // piece must be a pawn
+            ((board.current_state.turn == Turn::White && (0..8).contains(&to_square)) || // if white and on the front row
+            (board.current_state.turn == Turn::Black && (56..64).contains(&to_square)))
         {
-            if (board.current_state.turn == Turn::White && (0..8).contains(&to_square)) || // if white and on the front row
-            (board.current_state.turn == Turn::Black && (56..64).contains(&to_square)) { // if black and on the back row
-             for promotion_piece in vec![Piece::Queen, Piece::Bishop, Piece::Rook, Piece::Knight] { // add all options for promoting
-                         {
-                        moves.push(Move {
-                            from: from_square,
-                            to: to_square as u8,
-                            piece: piece,
-                            promotion: Some(promotion_piece),
-                            captured: captured_piece,
-                            castled: false,
-                        })
-                    }
+            // if black and on the back row
+            for promotion_piece in vec![Piece::Queen, Piece::Bishop, Piece::Rook, Piece::Knight] {
+                // add all options for promoting
+                {
+                    moves.push(Move {
+                        from: from_square,
+                        to: to_square as u8,
+                        piece: piece,
+                        promotion: Some(promotion_piece),
+                        captured: captured_piece,
+                        castled: false,
+                    })
                 }
             }
-        }
-        else
-        {
+        } else { // all cases other than promoting pawns
             moves.push(Move {
                 from: from_square,
                 to: to_square as u8,
@@ -482,7 +472,7 @@ pub struct Move {
     pub to: u8,   // Destination square (0-63)
     pub piece: Piece,
     pub promotion: Option<Piece>, // Optional promotion piece
-    pub captured: Option<Piece>, // Optional captured piece
+    pub captured: Option<Piece>,  // Optional captured piece
     pub castled: bool, // whether castling happened in this turn (responsible for moving king)
 }
 
@@ -815,9 +805,8 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
     }
     // updates the bitboard of the piece
     let bb_index = bitboard_from_piece_and_board(board, chess_move.piece);
-    
-    if chess_move.promotion.is_some()
-    {
+
+    if chess_move.promotion.is_some() {
         board.bitboards[bb_index] |= utils::mask(chess_move.to); // remove pawn
         let promotion_index = bitboard_from_piece_and_board(board, chess_move.promotion.unwrap());
         board.bitboards[promotion_index] &= !utils::mask(chess_move.to); // add promoted piece
@@ -848,14 +837,13 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
         let captured_bb = bitboard_from_piece_and_board(board, chess_move.captured.unwrap());
         board.bitboards[captured_bb] ^= utils::mask(chess_move.to);
     }
-    
+
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
     board.bitboards[bb_index] ^= utils::mask(chess_move.from);
-    
-    if chess_move.promotion.is_some()
-    {
+
+    if chess_move.promotion.is_some() {
         board.bitboards[bb_index] &= !utils::mask(chess_move.to); // remove pawn
-        
+
         let promotion_index = bitboard_from_piece_and_board(board, chess_move.promotion.unwrap());
         board.bitboards[promotion_index] |= utils::mask(chess_move.to); // add promoted piece
     }
@@ -880,7 +868,7 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 pub fn perft(board: &mut Board, depth: i32, startdepth: i32, verbose: bool) -> i32 {
     if depth == 0 {
         return 1;
-    }   
+    }
 
     let moves = generate_legal_moves(board);
     let mut num_moves: i32 = 0;
@@ -902,54 +890,4 @@ pub fn perft(board: &mut Board, depth: i32, startdepth: i32, verbose: bool) -> i
     }
 
     return num_moves;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    mod perft {
-        use super::*;
-        #[test]
-        fn perft_test_1() {
-            let mut board: Board =
-                Board::new(Some("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -"));
-            let turn: Turn = Turn::White;
-            let mut state: State = State {
-                turn,
-                castling_rights: 0,
-                enpassant: None,
-            };
-            assert_eq!(perft(&mut board, 1, 1, false), 20);
-            assert_eq!(perft(&mut board, 2, 2, false), 400);
-            assert_eq!(perft(&mut board, 3, 3, false), 8902);
-            assert_eq!(perft(&mut board, 4, 4, false), 197_281);
-            assert_eq!(perft(&mut board, 5, 5, false), 4_865_609);
-        }
-        #[test]
-        fn perft_test_2() {
-            let mut board: Board = Board::new(Some(
-                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
-            ));
-            let turn: Turn = Turn::White;
-            let mut state: State = State {
-                turn,
-                castling_rights: 0,
-                enpassant: None,
-            };
-            assert_eq!(perft(&mut board, 1, 1, false), 48);
-            assert_eq!(perft(&mut board, 2, 2, false), 2039);
-            assert_eq!(perft(&mut board, 3, 3, false), 97_862);
-            assert_eq!(perft(&mut board, 4, 4, false), 4_085_603);
-            assert_eq!(perft(&mut board, 5, 5, false), 193_690_690);
-        }
-        fn setup_board(fen: &str) -> (Board, State) {
-            let board = Board::new(Some(fen));
-            let state = State {
-                turn: Turn::Black,
-                castling_rights: 0,
-                enpassant: None,
-            };
-            (board, state)
-        }
-    }
 }

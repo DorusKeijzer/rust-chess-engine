@@ -477,4 +477,52 @@ mod tests {
 
         // Add more tests for black en passant captures if needed
     }
+    
+    #[cfg(test)]
+    mod perft {
+        use super::*;
+        #[test]
+        fn perft_test_1() {
+            let mut board: Board =
+                Board::new(Some("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -"));
+            let turn: Turn = Turn::White;
+            let mut state: State = State {
+                turn,
+                castling_rights: 0,
+                enpassant: None,
+            };
+            assert_eq!(perft(&mut board, 1, 1, false), 20);
+            assert_eq!(perft(&mut board, 2, 2, false), 400);
+            assert_eq!(perft(&mut board, 3, 3, false), 8902);
+            assert_eq!(perft(&mut board, 4, 4, false), 197_281);
+            assert_eq!(perft(&mut board, 5, 5, false), 4_865_609);
+        }
+        #[test]
+        fn perft_test_2() {
+            let mut board: Board = Board::new(Some(
+                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
+            ));
+            let turn: Turn = Turn::White;
+            let mut state: State = State {
+                turn,
+                castling_rights: 0,
+                enpassant: None,
+            };
+            assert_eq!(perft(&mut board, 1, 1, false), 48);
+            assert_eq!(perft(&mut board, 2, 2, false), 2039);
+            assert_eq!(perft(&mut board, 3, 3, false), 97_862);
+            assert_eq!(perft(&mut board, 4, 4, false), 4_085_603);
+            assert_eq!(perft(&mut board, 5, 5, false), 193_690_690);
+        }
+        fn setup_board(fen: &str) -> (Board, State) {
+            let board = Board::new(Some(fen));
+            let state = State {
+                turn: Turn::Black,
+                castling_rights: 0,
+                enpassant: None,
+            };
+            (board, state)
+        }
+    }
+
 }
