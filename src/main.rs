@@ -41,15 +41,27 @@ use legalmoves::unmake_move;
 fn main() {
     // Get the argument from the command line
     let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        eprintln!("Usage: {} <argument>", args[0]);
+    if args.len() != 3 {
+        eprintln!("Usage: {} <argument 1> <argument 2>", args[0]);
         std::process::exit(1);
     }
-    let fen = &args[1];
-    
-    let mut board = Board::new(Some(fen));
-    let p = perft(&mut board, 1, 1, true);
-    println!("{p}");
+    let mode = &args[1];
+    let fen = &args[2];
+    match mode.as_str() {
+        "default" =>  
+        {
+            let board = Board::new(Some(fen));
+
+        }
+        "script" => 
+        {
+            let mut board = Board::new(Some(fen));
+            let p: i32 = perft(&mut board, 1, 1, true);
+            println!("{p}");
+
+        }
+        _ => {println!("Not a valid mode :^)")}
+    }
 }
 
 #[cfg(test)]

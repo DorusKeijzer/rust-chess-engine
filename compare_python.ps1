@@ -1,6 +1,9 @@
 param (
     [string]$argument
 )
+Write-Host "Building latest version of chess engine..."
+# builds rust program
+cargo build --release -q
 
 # Define the paths to the Python and Rust executables
 $pythonScriptPath = "C:\Users\dorus\rust_projects\chess\pythontest.py"
@@ -13,14 +16,14 @@ if (-not $argument) {
 }
 
 # Run the Python script and capture its output
-Write-Host "Running Python script with argument: $argument"
+# Write-Host "Running Python script with argument: $argument"
 $pythonOutput = & python $pythonScriptPath $argument
-Write-Host "Python Output:`n$pythonOutput"
+# Write-Host "Python Output:`n$pythonOutput"
 
 # Run the Rust executable and capture its output
-Write-Host "Running Rust executable with argument: $argument"
-$rustOutput = & $rustExecutablePath $argument
-Write-Host "Rust Output:`n$rustOutput"
+# Write-Host "Running Rust executable with argument: $argument"
+$rustOutput = & $rustExecutablePath script $argument 
+# Write-Host "Rust Output:`n$rustOutput"
 
 # Split the outputs into arrays of lines
 $pythonLines = $pythonOutput -split "`n"
