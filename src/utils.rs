@@ -122,7 +122,7 @@ pub fn algebraic_to_square(algebraic: &str) -> Option<u8> {
     let rank = chars[1] as u8 - b'1'; // Convert '1'-'8' to 0-7
 
     // Calculate the square index
-    let square_index = file + 8 * rank;
+    let square_index = file + 8 * (7-rank);
 
     Some(square_index)
 }

@@ -445,18 +445,48 @@ pub struct Move {
     pub castled: bool, // whether castling happened in this turn (responsible for moving king)
 }
 
+impl fmt::Display for Piece {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Piece::Pawn => "P",
+                Piece::Rook => "R",
+                Piece::Bishop => "B",
+                Piece::Knight => "N",
+                Piece::King => "K",
+                Piece::Queen => "Q",
+            }
+        )
+    }
+}
+
 impl fmt::Display for Move {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let castling = if self.castled { "(Castling)" } else { "" };
+        let castling = if self.castled { "(Castling) " } else { "" };
+        let capture = if let Some(piece) = self.captured {
+            "(Capture)"
+        } else {
+            ""
+        };
 
         write!(
             f,
-            "{:?} from {} to {} {}",
+            "{} from {} to {}",
             self.piece,
             utils::square_to_algebraic(self.from),
             utils::square_to_algebraic(self.to),
-            castling
         )
+        // write!(
+        //     f,
+        //     "{} from {} to {} {}{}",
+        //     self.piece,
+        //     utils::square_to_algebraic(self.from),
+        //     utils::square_to_algebraic(self.to),
+        //     castling,
+        //     capture
+        // )
     }
 }
 
@@ -795,12 +825,7 @@ pub fn perft(board: &mut Board, depth: i32, startdepth: i32, verbose: bool) -> i
     let mut num_moves: i32 = 0;
     for m in moves {
         if verbose {
-            println!(
-                "{}{} {:?}",
-                "  ".repeat((startdepth - depth) as usize),
-                m,
-                board.current_state.turn
-            );
+            println!("{}{}", "  ".repeat((startdepth - depth) as usize), m);
         }
         make_move(board, &m, true);
         let newmoves = perft(board, depth - 1, startdepth, verbose);
@@ -825,9 +850,8 @@ mod tests {
         use super::*;
         #[test]
         fn perft_test_1() {
-            let mut board: Board = Board::new(Some(
-                "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-            ));
+            let mut board: Board =
+                Board::new(Some("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -"));
             let turn: Turn = Turn::White;
             let mut state: State = State {
                 turn,
@@ -867,5 +891,4 @@ mod tests {
             (board, state)
         }
     }
-
 }
