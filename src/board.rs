@@ -47,7 +47,7 @@ pub fn standard_start() -> Board {
 pub struct State {
     pub turn: Turn,
     pub castling_rights: u8,
-    pub enpassant: Option<u8>,
+    pub en_passant: Option<u8>,
 }
 
 impl State {
@@ -74,21 +74,23 @@ impl State {
             if castling_string.contains('q') {
                 castling |= 0b0001;
             }
-
-            let enpassent_square = utils::algebraic_to_square(en_passant);
+            println!("{en_passant:?}");
+            let en_passant_square = utils::algebraic_to_square(en_passant);
+            println!("{en_passant_square:?}");
 
             State {
                 turn: whose_turn,
                 castling_rights: castling,
-                enpassant: enpassent_square,
+                en_passant: en_passant_square,
             }
         } else {
             State {
                 turn: Turn::White,
                 castling_rights: 0b1111,
-                enpassant: None,
+                en_passant: None,
             }
         }
+        
     }
     /// whether the current player can castle kingside
     pub fn can_castle_kingside(&self) -> bool {
@@ -139,20 +141,18 @@ impl Board {
             board.current_state = new_state.clone();
             board.state_history = vec![new_state];
         }
-        
+        board.print_state();
         board
     }
 
-    pub fn printstate(&self)
+    pub fn print_state(&self)
     {
         let turn = self.current_state.turn;
         let castling_rights = self.current_state.castling_rights; 
-        let ep = "None";
-        if let Some(square) = self.current_state.enpassant 
-        {
-           let ep = square_to_algebraic(square).as_str();
+        let mut ep = String::from("None");
+        if let Some(square) = self.current_state.en_passant {
+            ep = square_to_algebraic(&square);
         }
-
         println!("Turn: {turn:?}");
         println!("Castling rights: {castling_rights:b}");
         println!("En passant square: {ep}");

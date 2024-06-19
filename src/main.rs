@@ -12,9 +12,9 @@ use crate::{
     legalmoves::{Move, Piece},
     utils::{draw_bb, find_bitboard, BitIter},
 };
-use legalmoves::{make_move, perft};
 use legalmoves::rook_attacks;
 use legalmoves::unmake_move;
+use legalmoves::{make_move, perft};
 use utils::{algebraic_to_square, square_to_algebraic};
 
 /// TODO prio order:
@@ -25,7 +25,7 @@ use utils::{algebraic_to_square, square_to_algebraic};
 /// Debug PERFT
 ///     1. Write more perft test (GPT ?)
 ///     2. debug until they all pass
-/// 
+///
 /// Minimax with bsimple board state evaluation
 /// Quiessence search
 /// Improve board state evaluation
@@ -42,25 +42,23 @@ fn main() {
     let mode = &args[1];
     let fen = &args[2];
     match mode.as_str() {
-        "default" =>  
-        {
+        "default" => {
             let board = Board::new(Some(fen));
             board.draw();
-            board.printstate();
+            board.print_state();
             let square = algebraic_to_square("e5").unwrap();
             let knightmoves = !board.all_white() & legalmoves::KNIGHT_MOVES[square as usize];
             draw_bb(knightmoves);
-
         }
-        "script" => 
-        {
+        "script" => {
             let mut board = Board::new(Some(fen));
             board.draw();
             let p: i32 = perft(&mut board, 1, 1, true);
             println!("{p}");
-
-        }   
-        _ => {println!("Not a valid mode :^)")}
+        }
+        _ => {
+            println!("Not a valid mode :^)")
+        }
     }
 }
 
@@ -218,46 +216,60 @@ mod tests {
         };
 
         #[test]
-        
-        fn test_white_pawn_normal_capture() {
+
+        fn test_white_pawn_normal_capture_generation() {
             let mut board = Board::new(Some(
                 "rnbqkbnr/pppppppp/8/4p3/3P4/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             ));
-            let pawn_capture = Move
-            {
-                from: algebraic_to_square( "d4").unwrap(),
-                to: algebraic_to_square( "e5").unwrap(),
+            let pawn_capture = Move {
+                from: algebraic_to_square("d4").unwrap(),
+                to: algebraic_to_square("e5").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
                 promotion: None,
-                castled: false, 
+                castled: false,
             };
-
+            
             let moves = generate_legal_moves(&mut board);
             assert!(moves.contains(&pawn_capture));
+        }
+        #[test]
+        fn test_white_pawn_normal_capture() {
+            let mut board = Board::new(Some(
+                "8/8/8/4p3/3P4/8/8/8 w KQkq - 0 1",
+            ));
+            let pawn_capture = Move {
+                from: algebraic_to_square("d4").unwrap(),
+                to: algebraic_to_square("e5").unwrap(),
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn),
+                promotion: None,
+                castled: false,
+            };
+            make_move(&mut board, &pawn_capture, true);
+            assert_ne!(board.bitboards[0],0);
+            assert_eq!(board.bitboards[6],0);
         }
         #[test]
         fn test_white_pawn_normal_capture_double() {
             let mut board = Board::new(Some(
                 "rnbqkbnr/pppppppp/8/2p1p3/3P4/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             ));
-            let pawn_capture_1 = Move
-            {
-                from: algebraic_to_square( "d4").unwrap(),
-                to: algebraic_to_square( "e5").unwrap(),
+            let pawn_capture_1 = Move {
+                from: algebraic_to_square("d4").unwrap(),
+                to: algebraic_to_square("e5").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
                 promotion: None,
-                castled: false, 
+                castled: false,
             };
-            let pawn_capture_2 = Move
-            {
-                from: algebraic_to_square( "d4").unwrap(),
-                to: algebraic_to_square( "c5").unwrap(),
+            let pawn_capture_2 = Move {
+                from: algebraic_to_square("d4").unwrap(),
+                to: algebraic_to_square("c5").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
                 promotion: None,
-                castled: false, 
+                castled: false,
             };
             board.draw();
             let moves = generate_legal_moves(&mut board);
@@ -269,14 +281,13 @@ mod tests {
             let mut board = Board::new(Some(
                 "rnbqkbnr/pppppppp/8/4p3/3P4/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1",
             ));
-            let pawn_capture = Move
-            {
-                from: algebraic_to_square( "e5").unwrap(),
-                to: algebraic_to_square( "d4").unwrap(),
+            let pawn_capture = Move {
+                from: algebraic_to_square("e5").unwrap(),
+                to: algebraic_to_square("d4").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
                 promotion: None,
-                castled: false, 
+                castled: false,
             };
 
             let moves = generate_legal_moves(&mut board);
@@ -286,24 +297,22 @@ mod tests {
             let mut board = Board::new(Some(
                 "rnbqkbnr/pppppppp/8/4p3/3P1P2/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1",
             ));
-            let pawn_capture_1 = Move
-            {
-                from: algebraic_to_square( "e5").unwrap(),
-                to: algebraic_to_square( "d4").unwrap(),
+            let pawn_capture_1 = Move {
+                from: algebraic_to_square("e5").unwrap(),
+                to: algebraic_to_square("d4").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
                 promotion: None,
-                castled: false, 
+                castled: false,
             };
 
-            let pawn_capture_2 = Move
-            {
-                from: algebraic_to_square( "e5").unwrap(),
-                to: algebraic_to_square( "b4").unwrap(),
+            let pawn_capture_2 = Move {
+                from: algebraic_to_square("e5").unwrap(),
+                to: algebraic_to_square("b4").unwrap(),
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
                 promotion: None,
-                castled: false, 
+                castled: false,
             };
 
             let moves = generate_legal_moves(&mut board);
@@ -341,12 +350,10 @@ mod tests {
             assert_eq!(
                 board.bitboards[4], // queen must be equal to the square moved to
                 utils::mask(to)
-                
-            ); 
+            );
             assert_eq!(
                 board.bitboards[0], // pawn must be empty
                 0
-
             );
         }
         #[test]
@@ -368,8 +375,7 @@ mod tests {
             assert_eq!(
                 board.bitboards[4], // queen must be equal to the square moved to
                 utils::mask(to)
-                
-            ); 
+            );
             assert_eq!(
                 board.bitboards[0], // pawn must be empty
                 0
@@ -378,8 +384,7 @@ mod tests {
             assert_eq!(
                 board.bitboards[0], // pawn must be equal to the square moved from after remaking
                 utils::mask(from)
-                
-            ); 
+            );
             assert_eq!(
                 board.bitboards[4], // queen must now be empty
                 0
@@ -404,12 +409,10 @@ mod tests {
             assert_eq!(
                 board.bitboards[10], // queen must be equal to the square moved to
                 utils::mask(to)
-                
-            ); 
+            );
             assert_eq!(
                 board.bitboards[6], // pawn must be empty
                 0
-
             );
         }
         #[test]
@@ -431,12 +434,10 @@ mod tests {
             assert_eq!(
                 board.bitboards[5], // bishop must be equal to the square moved to
                 utils::mask(to)
-                
-            ); 
+            );
             assert_eq!(
                 board.bitboards[0], // pawn must be empty
                 0
-
             );
         }
 
@@ -451,12 +452,10 @@ mod tests {
             legalmoves::{Move, Piece},
             utils::algebraic_to_square,
         };
-    
+
         #[test]
         fn test_white_en_passant_capture() {
-            let mut board = Board::new(Some(
-                "8/8/8/3pP3/8/8/8/8 w KQkq d6 0 1",
-            ));
+            let mut board = Board::new(Some("8/8/8/3pP3/8/8/8/8 w KQkq d6 0 1"));
             let move_str = "e5d6";
             let from = algebraic_to_square(&move_str[0..2]).unwrap();
             let to = algebraic_to_square(&move_str[2..4]).unwrap();
@@ -468,18 +467,22 @@ mod tests {
                 promotion: None,
                 castled: false,
             };
+            board.draw();
+            board.print_state();
+            println!("{:?}", board.current_state.en_passant);
             make_move(&mut board, &en_passant_move, true);
-    
+            board.draw();
+            board.print_state();
+            draw_bb(board.bitboards[0]);
+            draw_bb(board.bitboards[6]);
             // Assert board state after en passant capture
             assert_eq!(board.bitboards[0], utils::mask(to)); // white pawn must be on the captured square
-            assert_eq!(board.bitboards[6], utils::mask(algebraic_to_square("d5").unwrap()) ^ board.bitboards[6]); // black pawn on d5 must be captured
+            assert_eq!(board.bitboards[6], 0) // black pawn on d5 must be captured
         }
-    
+
         #[test]
         fn test_white_en_passant_capture_and_unmake() {
-            let mut board = Board::new(Some(
-                "8/8/8/3pP3/8/8/8/8 w KQkq d6 0 1",
-            ));
+            let mut board = Board::new(Some("8/8/8/3pP3/8/8/8/8 w KQkq d6 0 1"));
             let move_str = "e5d6";
             let from = algebraic_to_square(&move_str[0..2]).unwrap();
             let to = algebraic_to_square(&move_str[2..4]).unwrap();
@@ -493,17 +496,18 @@ mod tests {
             };
             make_move(&mut board, &en_passant_move, true);
             unmake_move(&mut board, &en_passant_move, true);
-    
+
             // Assert board state after unmaking the en passant capture
             assert_eq!(board.bitboards[0], utils::mask(from)); // white pawn must be back to its original square
-            assert_eq!(board.bitboards[6], utils::mask(algebraic_to_square("d5").unwrap())); // black pawn must be back on d5
+            assert_eq!(
+                board.bitboards[6],
+                utils::mask(algebraic_to_square("d5").unwrap())
+            ); // black pawn must be back on d5
         }
-    
+
         #[test]
         fn test_black_en_passant_capture() {
-            let mut board = Board::new(Some(
-                "8/8/8/8/3Pp3/8/8/8 b KQkq d3 0 1",
-            ));
+            let mut board = Board::new(Some("8/8/8/8/3Pp3/8/8/8 b KQkq d3 0 1"));
             let move_str = "e4d3";
             let from = algebraic_to_square(&move_str[0..2]).unwrap();
             let to = algebraic_to_square(&move_str[2..4]).unwrap();
@@ -516,17 +520,15 @@ mod tests {
                 castled: false,
             };
             make_move(&mut board, &en_passant_move, true);
-    
+
             // Assert board state after en passant capture
             assert_eq!(board.bitboards[6], utils::mask(to)); // black pawn must be on the captured square
-            assert_eq!(board.bitboards[0], utils::mask(algebraic_to_square("d4").unwrap()) ^ board.bitboards[0]); // white pawn on d4 must be captured
+            assert_eq!(board.bitboards[0], 0); // white pawn on d4 must be captured
         }
-    
+
         #[test]
         fn test_black_en_passant_capture_and_unmake() {
-            let mut board = Board::new(Some(
-                "8/8/8/8/3Pp3/8/8/8 b KQkq d3 0 1",
-            ));
+            let mut board = Board::new(Some("8/8/8/8/3Pp3/8/8/8 b KQkq d3 0 1"));
             let move_str = "e4d3";
             let from = algebraic_to_square(&move_str[0..2]).unwrap();
             let to = algebraic_to_square(&move_str[2..4]).unwrap();
@@ -540,15 +542,66 @@ mod tests {
             };
             make_move(&mut board, &en_passant_move, true);
             unmake_move(&mut board, &en_passant_move, true);
-    
+
             // Assert board state after unmaking the en passant capture
             assert_eq!(board.bitboards[6], utils::mask(from)); // black pawn must be back to its original square
-            assert_eq!(board.bitboards[0], utils::mask(algebraic_to_square("d4").unwrap())); // white pawn must be back on d4
+            assert_eq!(
+                board.bitboards[0],
+                utils::mask(algebraic_to_square("d4").unwrap())
+            ); // white pawn must be back on d4
         }
-    
+
+        #[test]
+        fn test_generate_white_en_passant_move() {
+            let mut board = Board::new(Some("8/8/8/3pP3/8/8/8/8 w KQkq d6 0 1"));
+            let moves = legalmoves::generate_legal_moves(&mut board);
+
+            let en_passant_move_str = "e5d6";
+            let from = algebraic_to_square(&en_passant_move_str[0..2]).unwrap();
+            let to = algebraic_to_square(&en_passant_move_str[2..4]).unwrap();
+
+            let en_passant_move = Move {
+                from,
+                to,
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn),
+                promotion: None,
+                castled: false,
+            };
+
+            assert!(
+                moves.contains(&en_passant_move),
+                "En passant move not generated for white."
+            );
+        }
+
+        #[test]
+        fn test_generate_black_en_passant_move() {
+            let mut board = Board::new(Some("8/8/8/8/3Pp3/8/8/8 b KQkq d3 0 1"));
+            let moves = legalmoves::generate_legal_moves(&mut board);
+
+            let en_passant_move_str = "e4d3";
+            let from = algebraic_to_square(&en_passant_move_str[0..2]).unwrap();
+            let to = algebraic_to_square(&en_passant_move_str[2..4]).unwrap();
+
+            let en_passant_move = Move {
+                from,
+                to,
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn),
+                promotion: None,
+                castled: false,
+            };
+
+            assert!(
+                moves.contains(&en_passant_move),
+                "En passant move not generated for black."
+            );
+        }
+
         // Add more tests for edge cases if needed
     }
-    
+
     #[cfg(test)]
     mod perft {
         use super::*;
@@ -560,7 +613,7 @@ mod tests {
             let mut state: State = State {
                 turn,
                 castling_rights: 0,
-                enpassant: None,
+                en_passant: None,
             };
             assert_eq!(perft(&mut board, 1, 1, false), 20);
             assert_eq!(perft(&mut board, 2, 2, false), 400);
@@ -577,7 +630,7 @@ mod tests {
             let mut state: State = State {
                 turn,
                 castling_rights: 0,
-                enpassant: None,
+                en_passant: None,
             };
             assert_eq!(perft(&mut board, 1, 1, false), 48);
             assert_eq!(perft(&mut board, 2, 2, false), 2039);
@@ -590,10 +643,9 @@ mod tests {
             let state = State {
                 turn: Turn::Black,
                 castling_rights: 0,
-                enpassant: None,
+                en_passant: None,
             };
             (board, state)
         }
     }
-
 }

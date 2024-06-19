@@ -1,6 +1,6 @@
 use crate::{
     board::{self, Board, State, Turn},
-    utils::{self, draw_bb, find_bitboard, BitIter},
+    utils::{self, draw_bb, find_bitboard, square_to_algebraic, BitIter},
 };
 use core::num;
 use lazy_static::lazy_static;
@@ -192,8 +192,9 @@ pub fn generate_legal_moves(board: &mut Board) -> Vec<Move> {
     result
 }
 
-fn bitboard_from_piece_and_board(board: &Board, piece: Piece) -> usize {
-    let offset = if board.current_state.turn == Turn::Black {
+fn bitboard_from_piece_and_color(color: &Turn, piece: Piece) -> usize
+{
+    let offset: usize = if color == &Turn::Black {
         6
     } else {
         0
@@ -208,7 +209,12 @@ fn bitboard_from_piece_and_board(board: &Board, piece: Piece) -> usize {
     }
 }
 
-fn piece_from_bitboard_index(bb_index: u8) -> Option<Piece> {
+
+fn bitboard_from_piece_and_board(board: &Board, piece: Piece) -> usize {
+    bitboard_from_piece_and_color(&board.current_state.turn, piece)
+}
+
+fn piece_from_square(bb_index: u8) -> Option<Piece> {
     match bb_index % 6 {
         0 => Some(Piece::Pawn),
         1 => Some(Piece::Rook),
@@ -360,11 +366,11 @@ pub fn pawn_captures(board: &Board, square: usize, reverse_state: bool) -> u64 {
         if (square >> 9) & occ != 0 && square & 0xFEFEFEFEFEFEFEFE != 0 {
             result |= square >> 9;
         }
-        if let Some(enpassent_square) = board.current_state.enpassant {
-            if enpassent_square as u64 & (square >> 7) != 0 && square & 0x8080808080808080 == 0 {
+        if let Some(en_passant_square) = board.current_state.en_passant {
+            if en_passant_square as u64 & (square >> 7) != 0 && square & 0x8080808080808080 == 0 {
                 result |= square >> 7;
             }
-            if enpassent_square as u64 & (square >> 9) != 0 && square & 0x0101010101010101 == 0 {
+            if en_passant_square as u64 & (square >> 9) != 0 && square & 0x0101010101010101 == 0 {
                 result |= square >> 9;
             }
         }
@@ -375,11 +381,11 @@ pub fn pawn_captures(board: &Board, square: usize, reverse_state: bool) -> u64 {
         if (square << 9) & occ != 0 && square & 0x7F7F7F7F7F7F7F7F != 0 {
             result |= square << 9;
         }
-        if let Some(enpassent_square) = board.current_state.enpassant {
-            if enpassent_square as u64 & (square << 7) != 0 && square & 0x0101010101010101 == 0 {
+        if let Some(en_passant_square) = board.current_state.en_passant {
+            if en_passant_square as u64 & (square << 7) != 0 && square & 0x0101010101010101 == 0 {
                 result |= square << 7;
             }
-            if enpassent_square as u64 & (square << 9) != 0 && square & 0x8080808080808080 == 0 {
+            if en_passant_square as u64 & (square << 9) != 0 && square & 0x8080808080808080 == 0 {
                 result |= square << 9;
             }
         }
@@ -413,9 +419,9 @@ fn pawn_square_pseudo_legal(board: &Board, square: usize) -> u64 {
     return result;
 }
 
-fn bitboard_index_from_square(board: Board, square: u8) -> Option<u8> {
+fn bitboard_index_from_square(board: &Board, square: u8) -> Option<u8> {
     for i in 0..12 {
-        if board.bitboards[i] ^ utils::mask(square) != 0 {
+        if board.bitboards[i] & utils::mask(square) != 0 {
             return Some(i as u8);
         }
     }
@@ -431,7 +437,7 @@ fn pseudo_legal_to_moves(board: &Board, bitboard: u64, from_square: u8, piece: P
         let mut captured_piece = None;
 
         if let Some(bb_index) = captured_bb {
-            captured_piece = piece_from_bitboard_index(bb_index as u8);
+            captured_piece = piece_from_square(bb_index as u8);
         }
         // promotion logic: in the case that a pawn piece is on the opposite row, add all possible promotions to legal moves.
         if piece ==Piece::Pawn &&  // piece must be a pawn
@@ -452,7 +458,8 @@ fn pseudo_legal_to_moves(board: &Board, bitboard: u64, from_square: u8, piece: P
                     })
                 }
             }
-        } else { // all cases other than promoting pawns
+        } else {
+            // all cases other than promoting pawns
             moves.push(Move {
                 from: from_square,
                 to: to_square as u8,
@@ -506,8 +513,8 @@ impl fmt::Display for Move {
             f,
             "{} from {} to {}",
             self.piece,
-            utils::square_to_algebraic(self.from),
-            utils::square_to_algebraic(self.to),
+            utils::square_to_algebraic(&self.from),
+            utils::square_to_algebraic(&self.to),
         )
         // write!(
         //     f,
@@ -834,8 +841,11 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 
     // if a piece is captured, find the corresponding bitboard and remove the piece there
     if chess_move.captured.is_some() {
-        let captured_bb = bitboard_from_piece_and_board(board, chess_move.captured.unwrap());
-        board.bitboards[captured_bb] ^= utils::mask(chess_move.to);
+        draw_bb(utils::mask(chess_move.to));
+        let captured_bb = bitboard_index_from_square(&board, chess_move.to).unwrap();
+        println!("{captured_bb}");
+        draw_bb(board.bitboards[captured_bb as usize]);
+        board.bitboards[captured_bb as usize] ^= utils::mask(chess_move.to);
     }
 
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
