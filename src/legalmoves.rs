@@ -226,7 +226,7 @@ fn legal_moves(board: &mut Board, piece: Piece) -> Vec<Move> {
     // makes move and if king not in check, push to results
     for chess_move in moves {
         make_move(board, &chess_move, false); // don't update state so we won't run check() for the wrong color
-        if !check(board, false) {
+        if !check(board) {
             result.push(chess_move)
         }
 
@@ -236,7 +236,7 @@ fn legal_moves(board: &mut Board, piece: Piece) -> Vec<Move> {
     return result;
 }
 
-fn check(board: &mut Board, draw: bool) -> bool {
+fn check(board: &mut Board) -> bool {
     // king:  blacks king if black to move
     // offset:  white pieces if black to move
     // own: blacks pieces if black to move
@@ -278,16 +278,6 @@ fn check(board: &mut Board, draw: bool) -> bool {
         }
     }
     // true if attack patterns intersect the king
-    if draw {
-        println!("king");
-        draw_bb(king);
-        println!("own");
-        draw_bb(own);
-        println!("attacks");
-        draw_bb(attacks);
-        println!("king & attacks");
-        draw_bb(king & attacks);
-    }
     return (king & attacks) != 0;
 }
 
@@ -362,16 +352,6 @@ pub fn pawn_captures(board: &Board, square: usize, reverse_state: bool) -> u64 {
         }
         if let Some(en_passant_square) = board.current_state.en_passant {
             opponent |= utils::mask(en_passant_square);
-            println!("{}", square_to_algebraic(&en_passant_square));
-            draw_bb(utils::mask(en_passant_square));
-            draw_bb(square >> 7);
-            draw_bb(0x8080808080808080);
-            println!("Test >> 7 {}",utils::mask(en_passant_square) & (square >> 7) != 0  );
-            println!("Test 2 >> 7 {}",utils::mask(en_passant_square) & (square >> 7) != 0 && square & 0x8080808080808080 == 0 );
-            draw_bb(square >> 9);
-            draw_bb(0x0101010101010101);
-            println!("Test >> 9 {}",utils::mask(en_passant_square) & (square >> 9) != 0  );
-            println!("Test 2 >> 9 {}",utils::mask(en_passant_square) & (square >> 9) != 0 && square & 0x0101010101010101 == 0  );
             if utils::mask(en_passant_square) & (square >> 7) != 0 && 
             square & 0x8080808080808080 == 0 {
                 result |= square >>  7;
@@ -398,8 +378,6 @@ pub fn pawn_captures(board: &Board, square: usize, reverse_state: bool) -> u64 {
             }
         }
     }
-    draw_bb(result);
-    draw_bb(opponent);
     return result & opponent;
 }
 
@@ -905,7 +883,6 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
                 }
             }
             None => {
-                println!("Move {chess_move}");
                 chess_move.to
             } // find the piece corresponding to the board
         };

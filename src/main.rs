@@ -18,10 +18,14 @@ use legalmoves::{make_move, perft};
 use utils::{algebraic_to_square, square_to_algebraic};
 
 /// TODO prio order:
-/// Implement en passant
-///     unmake ep move
-///     update en passant square
+/// Debug castling:
+///     castling possible when rooks threatened
 ///     
+/// Debug EP:
+///     possible need for pin check
+/// 
+/// implement check 
+///     make it so only allowed moves are ones that cancel check
 /// Debug PERFT
 ///     1. Write more perft test (GPT ?)
 ///     2. debug until they all pass
@@ -36,7 +40,7 @@ fn main() {
     // Get the argument from the command line
     let args: Vec<String> = env::args().collect();
     if args.len() != 3 {
-        eprintln!("Usage: {} <argument 1> <argument 2>", args[0]);
+        println!("Usage: {} <argument 1> <argument 2>", args[0]);
         std::process::exit(1);
     }
     let mode = &args[1];
