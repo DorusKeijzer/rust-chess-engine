@@ -250,6 +250,25 @@ mod tests {
             assert_ne!(board.bitboards[0],0);
             assert_eq!(board.bitboards[6],0);
         }
+        fn test_white_pawn_normal_capture_and_undo() {
+            let mut board = Board::new(Some(
+                "8/8/8/4p3/3P4/8/8/8 w KQkq - 0 1",
+            ));
+            let pawn_capture = Move {
+                from: algebraic_to_square("d4").unwrap(),
+                to: algebraic_to_square("e5").unwrap(),
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn),
+                promotion: None,
+                castled: false,
+            };
+            make_move(&mut board, &pawn_capture, true);
+            assert_ne!(board.bitboards[0],0);
+            assert_eq!(board.bitboards[6],0);
+            unmake_move(&mut board, &pawn_capture, true);
+            assert_ne!(board.bitboards[0],0);
+            assert_ne!(board.bitboards[6],0);
+        }
         #[test]
         fn test_white_pawn_normal_capture_double() {
             let mut board = Board::new(Some(

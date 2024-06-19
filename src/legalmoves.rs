@@ -807,8 +807,8 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 
     // Undoes a captured piece
     if let Some(captured_piece) = chess_move.captured {
-        let captured_bb = bitboard_from_piece_and_board(board, captured_piece);
-        board.bitboards[captured_bb] ^= utils::mask(chess_move.to);
+        let captured_bb = bitboard_index_from_square(&board, chess_move.to).unwrap();
+        board.bitboards[captured_bb as usize] ^= utils::mask(chess_move.to);
     }
     // updates the bitboard of the piece
     let bb_index = bitboard_from_piece_and_board(board, chess_move.piece);
@@ -841,10 +841,7 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 
     // if a piece is captured, find the corresponding bitboard and remove the piece there
     if chess_move.captured.is_some() {
-        draw_bb(utils::mask(chess_move.to));
         let captured_bb = bitboard_index_from_square(&board, chess_move.to).unwrap();
-        println!("{captured_bb}");
-        draw_bb(board.bitboards[captured_bb as usize]);
         board.bitboards[captured_bb as usize] ^= utils::mask(chess_move.to);
     }
 
