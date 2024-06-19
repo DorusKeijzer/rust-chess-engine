@@ -25,8 +25,8 @@ use utils::{algebraic_to_square, square_to_algebraic};
 /// Debug PERFT
 ///     1. Write more perft test (GPT ?)
 ///     2. debug until they all pass
-/// Simple board state evaluation
-/// Minimax
+/// 
+/// Minimax with bsimple board state evaluation
 /// Quiessence search
 /// Improve board state evaluation
 /// Zobrist hashing
@@ -451,13 +451,13 @@ mod tests {
             legalmoves::{Move, Piece},
             utils::algebraic_to_square,
         };
-
+    
         #[test]
         fn test_white_en_passant_capture() {
             let mut board = Board::new(Some(
-                "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPP1PPPP/RNBQKBNR w KQkq e6 0 1",
+                "8/8/8/3pP3/8/8/8/8 w KQkq d6 0 1",
             ));
-            let move_str = "f5e6";
+            let move_str = "e5d6";
             let from = algebraic_to_square(&move_str[0..2]).unwrap();
             let to = algebraic_to_square(&move_str[2..4]).unwrap();
             let en_passant_move = Move {
@@ -469,13 +469,84 @@ mod tests {
                 castled: false,
             };
             make_move(&mut board, &en_passant_move, true);
-
+    
             // Assert board state after en passant capture
-            assert_eq!(board.bitboards[Piece::Pawn as usize], 0x0000_0000_0000_00D0);
-            // Adjust this according to your board representation
+            assert_eq!(board.bitboards[0], utils::mask(to)); // white pawn must be on the captured square
+            assert_eq!(board.bitboards[6], utils::mask(algebraic_to_square("d5").unwrap()) ^ board.bitboards[6]); // black pawn on d5 must be captured
         }
-
-        // Add more tests for black en passant captures if needed
+    
+        #[test]
+        fn test_white_en_passant_capture_and_unmake() {
+            let mut board = Board::new(Some(
+                "8/8/8/3pP3/8/8/8/8 w KQkq d6 0 1",
+            ));
+            let move_str = "e5d6";
+            let from = algebraic_to_square(&move_str[0..2]).unwrap();
+            let to = algebraic_to_square(&move_str[2..4]).unwrap();
+            let en_passant_move = Move {
+                from,
+                to,
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn), // Capturing the pawn en passant
+                promotion: None,
+                castled: false,
+            };
+            make_move(&mut board, &en_passant_move, true);
+            unmake_move(&mut board, &en_passant_move, true);
+    
+            // Assert board state after unmaking the en passant capture
+            assert_eq!(board.bitboards[0], utils::mask(from)); // white pawn must be back to its original square
+            assert_eq!(board.bitboards[6], utils::mask(algebraic_to_square("d5").unwrap())); // black pawn must be back on d5
+        }
+    
+        #[test]
+        fn test_black_en_passant_capture() {
+            let mut board = Board::new(Some(
+                "8/8/8/8/3Pp3/8/8/8 b KQkq d3 0 1",
+            ));
+            let move_str = "e4d3";
+            let from = algebraic_to_square(&move_str[0..2]).unwrap();
+            let to = algebraic_to_square(&move_str[2..4]).unwrap();
+            let en_passant_move = Move {
+                from,
+                to,
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn), // Capturing the pawn en passant
+                promotion: None,
+                castled: false,
+            };
+            make_move(&mut board, &en_passant_move, true);
+    
+            // Assert board state after en passant capture
+            assert_eq!(board.bitboards[6], utils::mask(to)); // black pawn must be on the captured square
+            assert_eq!(board.bitboards[0], utils::mask(algebraic_to_square("d4").unwrap()) ^ board.bitboards[0]); // white pawn on d4 must be captured
+        }
+    
+        #[test]
+        fn test_black_en_passant_capture_and_unmake() {
+            let mut board = Board::new(Some(
+                "8/8/8/8/3Pp3/8/8/8 b KQkq d3 0 1",
+            ));
+            let move_str = "e4d3";
+            let from = algebraic_to_square(&move_str[0..2]).unwrap();
+            let to = algebraic_to_square(&move_str[2..4]).unwrap();
+            let en_passant_move = Move {
+                from,
+                to,
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn), // Capturing the pawn en passant
+                promotion: None,
+                castled: false,
+            };
+            make_move(&mut board, &en_passant_move, true);
+            unmake_move(&mut board, &en_passant_move, true);
+    
+            // Assert board state after unmaking the en passant capture
+            assert_eq!(board.bitboards[6], utils::mask(from)); // black pawn must be back to its original square
+            assert_eq!(board.bitboards[0], utils::mask(algebraic_to_square("d4").unwrap())); // white pawn must be back on d4
+        }
+    
+        // Add more tests for edge cases if needed
     }
     
     #[cfg(test)]
