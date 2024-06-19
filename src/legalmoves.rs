@@ -347,7 +347,7 @@ pub fn pawn_captures(board: &Board, square: usize, reverse_state: bool) -> u64 {
     let occ = board.occupied();
     let mut result: u64 = 0;
     let white_to_play = board.current_state.turn == Turn::White;
-    let opponent: u64 = if white_to_play ^ reverse_state {
+    let mut opponent: u64 = if white_to_play ^ reverse_state {
         board.all_black()
     } else {
         board.all_white()
@@ -361,10 +361,23 @@ pub fn pawn_captures(board: &Board, square: usize, reverse_state: bool) -> u64 {
             result |= square >> 9;
         }
         if let Some(en_passant_square) = board.current_state.en_passant {
-            if en_passant_square as u64 & (square >> 7) != 0 && square & 0x8080808080808080 == 0 {
-                result |= square >> 7;
+            opponent |= utils::mask(en_passant_square);
+            println!("{}", square_to_algebraic(&en_passant_square));
+            draw_bb(utils::mask(en_passant_square));
+            draw_bb(square >> 7);
+            draw_bb(0x8080808080808080);
+            println!("Test >> 7 {}",utils::mask(en_passant_square) & (square >> 7) != 0  );
+            println!("Test 2 >> 7 {}",utils::mask(en_passant_square) & (square >> 7) != 0 && square & 0x8080808080808080 == 0 );
+            draw_bb(square >> 9);
+            draw_bb(0x0101010101010101);
+            println!("Test >> 9 {}",utils::mask(en_passant_square) & (square >> 9) != 0  );
+            println!("Test 2 >> 9 {}",utils::mask(en_passant_square) & (square >> 9) != 0 && square & 0x0101010101010101 == 0  );
+            if utils::mask(en_passant_square) & (square >> 7) != 0 && 
+            square & 0x8080808080808080 == 0 {
+                result |= square >>  7;
             }
-            if en_passant_square as u64 & (square >> 9) != 0 && square & 0x0101010101010101 == 0 {
+            if utils::mask(en_passant_square) & (square >> 9) != 0 && 
+            square & 0x0101010101010101 == 0 {
                 result |= square >> 9;
             }
         }
@@ -376,15 +389,17 @@ pub fn pawn_captures(board: &Board, square: usize, reverse_state: bool) -> u64 {
             result |= square << 9;
         }
         if let Some(en_passant_square) = board.current_state.en_passant {
-            if en_passant_square as u64 & (square << 7) != 0 && square & 0x0101010101010101 == 0 {
+            opponent |= utils::mask(en_passant_square);
+            if utils::mask(en_passant_square) & (square << 7) != 0 && square & 0x0101010101010101 == 0 {
                 result |= square << 7;
             }
-            if en_passant_square as u64 & (square << 9) != 0 && square & 0x8080808080808080 == 0 {
+            if utils::mask(en_passant_square) & (square << 9) != 0 && square & 0x8080808080808080 == 0 {
                 result |= square << 9;
             }
         }
     }
-
+    draw_bb(result);
+    draw_bb(opponent);
     return result & opponent;
 }
 
@@ -433,6 +448,13 @@ fn pseudo_legal_to_moves(board: &Board, bitboard: u64, from_square: u8, piece: P
         if let Some(bb_index) = captured_bb {
             captured_piece = piece_from_square(bb_index as u8);
         }
+        if let Some(en_passant_square) = board.current_state.en_passant
+        {
+            if piece == Piece::Pawn && en_passant_square == to_square as u8
+            {
+                captured_piece = Some(Piece::Pawn);
+            }
+        }
         // promotion logic: in the case that a pawn piece is on the opposite row, add all possible promotions to legal moves.
         if piece ==Piece::Pawn &&  // piece must be a pawn
             ((board.current_state.turn == Turn::White && (0..8).contains(&to_square)) || // if white and on the front row
@@ -452,6 +474,7 @@ fn pseudo_legal_to_moves(board: &Board, bitboard: u64, from_square: u8, piece: P
                     })
                 }
             }
+
         } else {
             // all cases other than promoting pawns
             moves.push(Move {
@@ -572,9 +595,13 @@ pub fn rook_attacks(occupied: u64, own: u64, square: usize) -> u64 {
 ///
 pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
     let mut result: Vec<Move> = Vec::new();
-    if board.current_state.turn == Turn::White {
+    if board.current_state.turn == Turn::White &&
+     board.bitboards[2] ^ 0x1000000000000000 != 0 { // king must exist
         // White kingside castling
-        if board.current_state.can_castle_kingside() & (occupied & 0x6000000000000000 == 0)
+        
+        if board.current_state.can_castle_kingside() &&
+        (occupied & 0x6000000000000000 == 0) &&
+        board.bitboards[1] & 0x8000000000000000 != 0 // rook must be in right place
         // no pieces in F1, G1
         {
             result.push(Move {
@@ -588,7 +615,9 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
         }
 
         // White queenside castling
-        if board.current_state.can_castle_queenside() & (occupied & 0xe00000000000000 == 0)
+        if board.current_state.can_castle_queenside() &&
+        (occupied & 0xe00000000000000 == 0) &&
+        board.bitboards[1] & 0x100000000000000 != 0
         // no pieces in B1, C1, D1
         {
             result.push(Move {
@@ -600,12 +629,16 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
                 castled: true,
             });
         }
-    } else if board.current_state.turn == Turn::Black {
+    } else if board.current_state.turn == Turn::Black &&
+    board.bitboards[8] & 0x10 != 0
+    { // king must be in the right place
         // Black kingside castling
-        if board.current_state.can_castle_kingside() & (occupied & 0x60 == 0)
-        // no pieces in F8, G8
-        {
-            result.push(Move {
+        if board.current_state.can_castle_kingside() &&
+         (occupied & 0x60 == 0)&&
+         board.bitboards[7] & 0x80 != 0
+         // no pieces in F8, G8
+         {
+             result.push(Move {
                 from: 7,
                 to: 5,
                 piece: Piece::Rook, // Rook's piece representation
@@ -614,9 +647,11 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
                 castled: true,
             });
         }
-
+        
         // Black queenside castling
-        if board.current_state.can_castle_queenside() & (occupied & 0xe == 0)
+        if board.current_state.can_castle_queenside() &&
+        (occupied & 0xe == 0) &&
+        board.bitboards[7] & 0x1 != 0
         // no pieces in B8, C8, D8
         {
             result.push(Move {
@@ -821,10 +856,7 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
             };
             let captured_bb =
                 bitboard_from_piece_and_color(&opposite_color, chess_move.captured.unwrap());
-            println!("{captured_bb}");
-            draw_bb(board.bitboards[captured_bb as usize]);
             board.bitboards[captured_bb as usize] ^= utils::mask(chess_move.to);
-            draw_bb(board.bitboards[captured_bb as usize]);
         }
     }
     // updates the bitboard of the piece

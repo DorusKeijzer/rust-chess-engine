@@ -493,12 +493,7 @@ mod tests {
                 promotion: None,
                 castled: false,
             };
-            board.draw();
-            board.print_state();
-            println!("{:?}", board.current_state.en_passant);
             make_move(&mut board, &en_passant_move, true);
-            board.draw();
-            board.print_state();
             // Assert board state after en passant capture
             assert_eq!(board.bitboards[0], utils::mask(to)); // white pawn must be on the captured square
             assert_eq!(board.bitboards[6], 0) // black pawn on d5 must be captured
@@ -518,11 +513,8 @@ mod tests {
                 promotion: None,
                 castled: false,
             };
-            board.draw();
             make_move(&mut board, &en_passant_move, true);
-            board.draw();
             unmake_move(&mut board, &en_passant_move, true);
-            board.draw();
 
             // Assert board state after unmaking the en passant capture
             assert_eq!(board.bitboards[0], utils::mask(from)); // white pawn must be back to its original square
@@ -581,12 +573,10 @@ mod tests {
         #[test]
         fn test_generate_white_en_passant_move() {
             let mut board = Board::new(Some("8/8/8/3pP3/8/8/8/8 w KQkq d6 0 1"));
-            let moves = legalmoves::generate_legal_moves(&mut board);
-
             let en_passant_move_str = "e5d6";
             let from = algebraic_to_square(&en_passant_move_str[0..2]).unwrap();
             let to = algebraic_to_square(&en_passant_move_str[2..4]).unwrap();
-
+            
             let en_passant_move = Move {
                 from,
                 to,
@@ -595,7 +585,7 @@ mod tests {
                 promotion: None,
                 castled: false,
             };
-
+            let moves = legalmoves::generate_legal_moves(&mut board);
             assert!(
                 moves.contains(&en_passant_move),
                 "En passant move not generated for white."

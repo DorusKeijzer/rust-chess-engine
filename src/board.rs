@@ -74,9 +74,7 @@ impl State {
             if castling_string.contains('q') {
                 castling |= 0b0001;
             }
-            println!("{en_passant:?}");
             let en_passant_square = utils::algebraic_to_square(en_passant);
-            println!("{en_passant_square:?}");
 
             State {
                 turn: whose_turn,
@@ -141,7 +139,6 @@ impl Board {
             board.current_state = new_state.clone();
             board.state_history = vec![new_state];
         }
-        board.print_state();
         board
     }
 
