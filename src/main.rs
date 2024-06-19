@@ -19,9 +19,9 @@ use utils::{algebraic_to_square, square_to_algebraic};
 
 /// TODO prio order:
 /// Implement en passant
-///     1. Generate tests for en passant
-///     2. update struct and functions to accomodate en passant
-///     3. etc.
+///     unmake ep move
+///     update en passant square
+///     
 /// Debug PERFT
 ///     1. Write more perft test (GPT ?)
 ///     2. debug until they all pass
@@ -205,7 +205,7 @@ mod tests {
     }
 
     #[cfg(test)]
-    mod pawn_captures_tests {
+    mod  pawn_captures_tests {
         use legalmoves::generate_legal_moves;
 
         use super::*;
@@ -492,8 +492,6 @@ mod tests {
             make_move(&mut board, &en_passant_move, true);
             board.draw();
             board.print_state();
-            draw_bb(board.bitboards[0]);
-            draw_bb(board.bitboards[6]);
             // Assert board state after en passant capture
             assert_eq!(board.bitboards[0], utils::mask(to)); // white pawn must be on the captured square
             assert_eq!(board.bitboards[6], 0) // black pawn on d5 must be captured
@@ -513,8 +511,11 @@ mod tests {
                 promotion: None,
                 castled: false,
             };
+            board.draw();
             make_move(&mut board, &en_passant_move, true);
+            board.draw();
             unmake_move(&mut board, &en_passant_move, true);
+            board.draw();
 
             // Assert board state after unmaking the en passant capture
             assert_eq!(board.bitboards[0], utils::mask(from)); // white pawn must be back to its original square

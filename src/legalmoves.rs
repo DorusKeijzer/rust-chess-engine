@@ -1,6 +1,6 @@
 use crate::{
     board::{self, Board, State, Turn},
-    utils::{self, draw_bb, find_bitboard, square_to_algebraic, BitIter},
+    utils::{self, algebraic_to_square, draw_bb, find_bitboard, square_to_algebraic, BitIter},
 };
 use core::num;
 use lazy_static::lazy_static;
@@ -192,13 +192,8 @@ pub fn generate_legal_moves(board: &mut Board) -> Vec<Move> {
     result
 }
 
-fn bitboard_from_piece_and_color(color: &Turn, piece: Piece) -> usize
-{
-    let offset: usize = if color == &Turn::Black {
-        6
-    } else {
-        0
-    };
+fn bitboard_from_piece_and_color(color: &Turn, piece: Piece) -> usize {
+    let offset: usize = if color == &Turn::Black { 6 } else { 0 };
     match piece {
         Piece::Pawn => 0 + offset,
         Piece::Rook => 1 + offset,
@@ -208,7 +203,6 @@ fn bitboard_from_piece_and_color(color: &Turn, piece: Piece) -> usize
         Piece::Bishop => 5 + offset,
     }
 }
-
 
 fn bitboard_from_piece_and_board(board: &Board, piece: Piece) -> usize {
     bitboard_from_piece_and_color(&board.current_state.turn, piece)
@@ -794,6 +788,7 @@ fn remove_castling_rights(chess_move: &Move, state: &mut State) {
 pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
     if update_state {
         // reverts to the previous state
+        // this has to happen first because state is used to revert moves
         if let Some(state) = board.state_history.pop() {
             board.current_state = state;
         }
@@ -807,8 +802,19 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 
     // Undoes a captured piece
     if let Some(captured_piece) = chess_move.captured {
-        let captured_bb = bitboard_index_from_square(&board, chess_move.to).unwrap();
-        board.bitboards[captured_bb as usize] ^= utils::mask(chess_move.to);
+        if let Some(ep_square) = board.current_state.en_passant { // in case of en passant capture
+            if board.current_state.turn == Turn::White {
+                let captured_bb = bitboard_from_piece_and_color(&Turn::Black, chess_move.captured.unwrap()); 
+                board.bitboards[captured_bb] ^= utils::mask(ep_square) << 8; //  move back one row behind e.p. square
+            } else {    
+                let captured_bb = bitboard_from_piece_and_color(&Turn::White, chess_move.captured.unwrap());
+                board.bitboards[captured_bb] ^= utils::mask(ep_square) >> 8; // move back one row behind e.p. square
+            };
+            
+        } else {
+            let captured_bb = bitboard_index_from_square(&board, chess_move.to).unwrap();
+            board.bitboards[captured_bb as usize] ^= utils::mask(chess_move.to);
+        }
     }
     // updates the bitboard of the piece
     let bb_index = bitboard_from_piece_and_board(board, chess_move.piece);
@@ -840,9 +846,24 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
     let bb_index = bitboard_from_piece_and_board(board, chess_move.piece);
 
     // if a piece is captured, find the corresponding bitboard and remove the piece there
-    if chess_move.captured.is_some() {
-        let captured_bb = bitboard_index_from_square(&board, chess_move.to).unwrap();
-        board.bitboards[captured_bb as usize] ^= utils::mask(chess_move.to);
+    if let Some(captured_piece) = chess_move.captured {
+        let opposite_color = if board.current_state.turn == Turn::White {
+            Turn::Black
+        } else {
+            Turn::White
+        };
+        let captured_bb = bitboard_from_piece_and_color(&opposite_color, captured_piece);
+        let captured_index = match board.current_state.en_passant {
+            Some(square) => {
+                // in case of en passant capture
+                match board.current_state.turn {
+                    Turn::Black => square - 8, // the piece one row before the e.p. square
+                    Turn::White => square + 8, // the piece one row behind the e.p. square
+                }
+            }
+            None => bitboard_index_from_square(&board, chess_move.to).unwrap(), // find the piece corresponding to the board
+        };
+        board.bitboards[captured_bb as usize] ^= utils::mask(captured_index);
     }
 
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
