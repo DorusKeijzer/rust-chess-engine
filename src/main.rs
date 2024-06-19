@@ -78,8 +78,9 @@ mod tests {
                 promotion: None,
                 castled: true,
             };
+            board.draw();
             let moves = legalmoves::generate_legal_moves(&mut board);
-
+            for m in moves.clone(){println!("{m}");}
             assert!(moves.contains(&rook_move));
         }
         #[test]
@@ -250,6 +251,7 @@ mod tests {
             assert_ne!(board.bitboards[0],0);
             assert_eq!(board.bitboards[6],0);
         }
+        #[test]
         fn test_white_pawn_normal_capture_and_undo() {
             let mut board = Board::new(Some(
                 "8/8/8/4p3/3P4/8/8/8 w KQkq - 0 1",
@@ -262,10 +264,15 @@ mod tests {
                 promotion: None,
                 castled: false,
             };
+            board.draw();
             make_move(&mut board, &pawn_capture, true);
+            board.draw();
             assert_ne!(board.bitboards[0],0);
+            draw_bb(board.bitboards[0]);
+            draw_bb(board.bitboards[6]);
             assert_eq!(board.bitboards[6],0);
             unmake_move(&mut board, &pawn_capture, true);
+            board.draw();
             assert_ne!(board.bitboards[0],0);
             assert_ne!(board.bitboards[6],0);
         }

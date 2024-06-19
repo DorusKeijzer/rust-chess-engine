@@ -802,18 +802,29 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 
     // Undoes a captured piece
     if let Some(captured_piece) = chess_move.captured {
-        if let Some(ep_square) = board.current_state.en_passant { // in case of en passant capture
+        if let Some(ep_square) = board.current_state.en_passant {
+            // in case of en passant capture
             if board.current_state.turn == Turn::White {
-                let captured_bb = bitboard_from_piece_and_color(&Turn::Black, chess_move.captured.unwrap()); 
+                let captured_bb =
+                    bitboard_from_piece_and_color(&Turn::Black, chess_move.captured.unwrap());
                 board.bitboards[captured_bb] ^= utils::mask(ep_square) << 8; //  move back one row behind e.p. square
-            } else {    
-                let captured_bb = bitboard_from_piece_and_color(&Turn::White, chess_move.captured.unwrap());
+            } else {
+                let captured_bb =
+                    bitboard_from_piece_and_color(&Turn::White, chess_move.captured.unwrap());
                 board.bitboards[captured_bb] ^= utils::mask(ep_square) >> 8; // move back one row behind e.p. square
             };
-            
         } else {
-            let captured_bb = bitboard_index_from_square(&board, chess_move.to).unwrap();
+            let opposite_color = if board.current_state.turn == Turn::White {
+                Turn::Black
+            } else {
+                Turn::White
+            };
+            let captured_bb =
+                bitboard_from_piece_and_color(&opposite_color, chess_move.captured.unwrap());
+            println!("{captured_bb}");
+            draw_bb(board.bitboards[captured_bb as usize]);
             board.bitboards[captured_bb as usize] ^= utils::mask(chess_move.to);
+            draw_bb(board.bitboards[captured_bb as usize]);
         }
     }
     // updates the bitboard of the piece
@@ -852,7 +863,7 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
         } else {
             Turn::White
         };
-        let captured_bb = bitboard_from_piece_and_color(&opposite_color, captured_piece);
+        let captured_bb: usize = bitboard_from_piece_and_color(&opposite_color, captured_piece);
         let captured_index = match board.current_state.en_passant {
             Some(square) => {
                 // in case of en passant capture
@@ -861,7 +872,10 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
                     Turn::White => square + 8, // the piece one row behind the e.p. square
                 }
             }
-            None => bitboard_index_from_square(&board, chess_move.to).unwrap(), // find the piece corresponding to the board
+            None => {
+                println!("Move {chess_move}");
+                chess_move.to
+            } // find the piece corresponding to the board
         };
         board.bitboards[captured_bb as usize] ^= utils::mask(captured_index);
     }
