@@ -25,6 +25,7 @@ use utils::{algebraic_to_square, square_to_algebraic};
 ///     possible need for pin check
 /// 
 /// implement check 
+///     write test
 ///     make it so only allowed moves are ones that cancel check
 /// Debug PERFT
 ///     1. Write more perft test (GPT ?)
@@ -72,8 +73,8 @@ mod tests {
     mod castling {
         use super::*;
         #[test]
-        fn castling_in_make_moves_for_white() {
-            let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/R3K2R w KQ - 0 1"));
+        fn generate_castling_white() {
+            let mut board = Board::new(Some("8/8/8/8/8/8/8/R3K2R w KQkq - 0 1"));
             let rook_move = Move {
                 from: 63,
                 to: 61,
@@ -85,11 +86,45 @@ mod tests {
             board.draw();
             let moves = legalmoves::generate_legal_moves(&mut board);
             for m in moves.clone(){println!("{m}");}
-            assert!(moves.contains(&rook_move));
+            assert!(moves.contains(&rook_move), "Kingside castling move not generated");
         }
         #[test]
-        fn castling_in_make_moves_for_black() {
-            let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/R3K2R b kqKQ - 0 1"));
+        fn dont_generate_castling_white() {
+            // shouldn't pass because rooks are threatened
+            let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"));
+            let rook_move = Move {
+                from: 63,
+                to: 61,
+                piece: Piece::Rook, // Rook
+                captured: None,
+                promotion: None,
+                castled: true,
+            };
+            board.draw();
+            let moves = legalmoves::generate_legal_moves(&mut board);
+            for m in moves.clone(){println!("{m}");}
+            assert!(!moves.contains(&rook_move), "Rooks are threatened  ");
+        }
+        #[test]
+        fn dont_generate_castling_blacks() {
+            // shouldn't pass because rooks are threatened
+            let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/R3K2R b kq - 0 1"));
+            let rook_move = Move {
+                from: 0,
+                to: 3,
+                piece: Piece::Rook, // Rook
+                captured: None,
+                promotion: None,
+                castled: true,
+            };
+            board.draw();
+            let moves = legalmoves::generate_legal_moves(&mut board);
+            for m in moves.clone(){println!("{m}");}
+            assert!(!moves.contains(&rook_move), "Rooks are threatened");
+        }
+        #[test]
+        fn generate_castling_black() {
+            let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/8 b kqKQ - 0 1"));
             let rook_move = Move {
                 from: 0,
                 to: 3,
@@ -594,6 +629,28 @@ mod tests {
                 moves.contains(&en_passant_move),
                 "En passant move not generated for white."
             );
+        }
+        #[test]
+        fn test_dont_generate_white_en_passant_move() {
+            let mut board = Board::new(Some("8/8/8/r2pP1K/8/8/8/8 w KQkq d6 0 1"));
+            let en_passant_move_str = "e5d6";
+            let from = algebraic_to_square(&en_passant_move_str[0..2]).unwrap();
+            let to = algebraic_to_square(&en_passant_move_str[2..4]).unwrap();
+            
+            let en_passant_move = Move {
+                from,
+                to,
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn),
+                promotion: None,
+                castled: false,
+            };
+            let moves = legalmoves::generate_legal_moves(&mut board);
+            assert!(
+                !moves.contains(&en_passant_move),
+                "King is in check."
+            );
+            
         }
 
         #[test]
