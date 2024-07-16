@@ -4,7 +4,7 @@ from sys import argv
 
 fen = argv[1]
 # Path to your Stockfish executable
-STOCKFISH_PATH = r"C:\Users\dorus\OneDrive\Bureaublad\stockfish-windows-x86-64\stockfish\stockfish-windows-x86-64.exe"
+STOCKFISH_PATH = r"/usr/bin/stockfish"
 
 # Initialize the chess board with a given FEN position or use the starting position
 board = chess.Board(fen)  # or use chess.Board(fen_string) for a specific position
