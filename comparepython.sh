@@ -29,10 +29,10 @@ lastRustLine=$(echo "$rustOutput" | tail -n 1)
 if [ "$lastPythonLine" = "$lastRustLine" ]; then
     echo "Same number of moves"
 else
-    # Find lines that are unique to each output
+    # Use comm to find lines unique to each output
     echo "Unique lines in Python output:"
-    diff <(echo "$pythonOutput") <(echo "$rustOutput") | grep "^<" | cut -c 3-
+    comm -23 <(echo "$pythonOutput" | sort) <(echo "$rustOutput" | sort)
 
     echo "Unique lines in Rust output:"
-    diff <(echo "$pythonOutput") <(echo "$rustOutput") | grep "^>" | cut -c 3-
+    comm -13 <(echo "$pythonOutput" | sort) <(echo "$rustOutput" | sort)
 fi

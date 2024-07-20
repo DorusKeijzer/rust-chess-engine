@@ -23,8 +23,8 @@ use utils::{algebraic_to_square, square_to_algebraic};
 ///     
 /// Debug EP:
 ///     possible need for pin check
-/// 
-/// implement check 
+///
+/// implement check
 ///     write test
 ///     make it so only allowed moves are ones that cancel check
 /// Debug PERFT
@@ -57,7 +57,7 @@ fn main() {
         }
         "script" => {
             let mut board = Board::new(Some(fen));
-            board.draw();
+            // board.draw();
             let p: i32 = perft(&mut board, 1, 1, true);
             println!("{p}");
         }
@@ -85,8 +85,13 @@ mod tests {
             };
             board.draw();
             let moves = legalmoves::generate_legal_moves(&mut board);
-            for m in moves.clone(){println!("{m}");}
-            assert!(moves.contains(&rook_move), "Kingside castling move not generated");
+            for m in moves.clone() {
+                println!("{m}");
+            }
+            assert!(
+                moves.contains(&rook_move),
+                "Kingside castling move not generated"
+            );
         }
         #[test]
         fn dont_generate_castling_white() {
@@ -102,7 +107,9 @@ mod tests {
             };
             board.draw();
             let moves = legalmoves::generate_legal_moves(&mut board);
-            for m in moves.clone(){println!("{m}");}
+            for m in moves.clone() {
+                println!("{m}");
+            }
             assert!(!moves.contains(&rook_move), "Rooks are threatened  ");
         }
         #[test]
@@ -119,7 +126,9 @@ mod tests {
             };
             board.draw();
             let moves = legalmoves::generate_legal_moves(&mut board);
-            for m in moves.clone(){println!("{m}");}
+            for m in moves.clone() {
+                println!("{m}");
+            }
             assert!(!moves.contains(&rook_move), "Rooks are threatened");
         }
         #[test]
@@ -245,7 +254,7 @@ mod tests {
     }
 
     #[cfg(test)]
-    mod  pawn_captures_tests {
+    mod pawn_captures_tests {
         use legalmoves::generate_legal_moves;
 
         use super::*;
@@ -269,15 +278,13 @@ mod tests {
                 promotion: None,
                 castled: false,
             };
-            
+
             let moves = generate_legal_moves(&mut board);
             assert!(moves.contains(&pawn_capture));
         }
         #[test]
         fn test_white_pawn_normal_capture() {
-            let mut board = Board::new(Some(
-                "8/8/8/4p3/3P4/8/8/8 w KQkq - 0 1",
-            ));
+            let mut board = Board::new(Some("8/8/8/4p3/3P4/8/8/8 w KQkq - 0 1"));
             let pawn_capture = Move {
                 from: algebraic_to_square("d4").unwrap(),
                 to: algebraic_to_square("e5").unwrap(),
@@ -287,14 +294,12 @@ mod tests {
                 castled: false,
             };
             make_move(&mut board, &pawn_capture, true);
-            assert_ne!(board.bitboards[0],0);
-            assert_eq!(board.bitboards[6],0);
+            assert_ne!(board.bitboards[0], 0);
+            assert_eq!(board.bitboards[6], 0);
         }
         #[test]
         fn test_white_pawn_normal_capture_and_undo() {
-            let mut board = Board::new(Some(
-                "8/8/8/4p3/3P4/8/8/8 w KQkq - 0 1",
-            ));
+            let mut board = Board::new(Some("8/8/8/4p3/3P4/8/8/8 w KQkq - 0 1"));
             let pawn_capture = Move {
                 from: algebraic_to_square("d4").unwrap(),
                 to: algebraic_to_square("e5").unwrap(),
@@ -306,14 +311,14 @@ mod tests {
             board.draw();
             make_move(&mut board, &pawn_capture, true);
             board.draw();
-            assert_ne!(board.bitboards[0],0);
+            assert_ne!(board.bitboards[0], 0);
             draw_bb(board.bitboards[0]);
             draw_bb(board.bitboards[6]);
-            assert_eq!(board.bitboards[6],0);
+            assert_eq!(board.bitboards[6], 0);
             unmake_move(&mut board, &pawn_capture, true);
             board.draw();
-            assert_ne!(board.bitboards[0],0);
-            assert_ne!(board.bitboards[6],0);
+            assert_ne!(board.bitboards[0], 0);
+            assert_ne!(board.bitboards[6], 0);
         }
         #[test]
         fn test_white_pawn_normal_capture_double() {
@@ -615,7 +620,7 @@ mod tests {
             let en_passant_move_str = "e5d6";
             let from = algebraic_to_square(&en_passant_move_str[0..2]).unwrap();
             let to = algebraic_to_square(&en_passant_move_str[2..4]).unwrap();
-            
+
             let en_passant_move = Move {
                 from,
                 to,
@@ -636,7 +641,7 @@ mod tests {
             let en_passant_move_str = "e5d6";
             let from = algebraic_to_square(&en_passant_move_str[0..2]).unwrap();
             let to = algebraic_to_square(&en_passant_move_str[2..4]).unwrap();
-            
+
             let en_passant_move = Move {
                 from,
                 to,
@@ -646,11 +651,7 @@ mod tests {
                 castled: false,
             };
             let moves = legalmoves::generate_legal_moves(&mut board);
-            assert!(
-                !moves.contains(&en_passant_move),
-                "King is in check."
-            );
-            
+            assert!(!moves.contains(&en_passant_move), "King is in check.");
         }
 
         #[test]

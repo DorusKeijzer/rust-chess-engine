@@ -88,7 +88,6 @@ impl State {
                 en_passant: None,
             }
         }
-        
     }
     /// whether the current player can castle kingside
     pub fn can_castle_kingside(&self) -> bool {
@@ -131,9 +130,10 @@ impl Board {
             state_history: vec![initial_state.clone()],
             current_state: initial_state,
         };
-        
+
         if let Some(fen) = fen_string {
             let split = fen.split(" ").collect::<Vec<&str>>(); // splits fen string into separate parts
+
             let new_state = State::new(Some((split[1], split[2], split[3])));
             board.parse_fen(split[0]);
             board.current_state = new_state.clone();
@@ -142,10 +142,9 @@ impl Board {
         board
     }
 
-    pub fn print_state(&self)
-    {
+    pub fn print_state(&self) {
         let turn = self.current_state.turn;
-        let castling_rights = self.current_state.castling_rights; 
+        let castling_rights = self.current_state.castling_rights;
         let mut ep = String::from("None");
         if let Some(square) = self.current_state.en_passant {
             ep = square_to_algebraic(&square);
