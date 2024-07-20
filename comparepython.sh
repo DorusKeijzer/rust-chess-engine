@@ -16,6 +16,8 @@ cargo build --release -q
 pythonScriptPath="pythontest.py"
 rustExecutablePath="target/release/chess"
 
+$rustExecutablePath draw "$argument"
+
 # Run the Python script and capture its output
 pythonOutput=$(python "$pythonScriptPath" "$argument")
 

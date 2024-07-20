@@ -46,9 +46,9 @@ fn main() {
     }
     let mode = &args[1];
     let fen = &args[2];
+    let mut board = Board::new(Some(fen));
     match mode.as_str() {
         "default" => {
-            let board = Board::new(Some(fen));
             board.draw();
             board.print_state();
             let square = algebraic_to_square("e5").unwrap();
@@ -56,11 +56,10 @@ fn main() {
             draw_bb(knightmoves);
         }
         "script" => {
-            let mut board = Board::new(Some(fen));
-            // board.draw();
             let p: i32 = perft(&mut board, 1, 1, true);
             println!("{p}");
         }
+        "draw" => board.draw(),
         _ => {
             println!("Not a valid mode :^)")
         }
