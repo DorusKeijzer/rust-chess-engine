@@ -53,7 +53,6 @@ fn main() {
             board.print_state();
             let square = algebraic_to_square("e5").unwrap();
             let knightmoves = !board.all_white() & legalmoves::KNIGHT_MOVES[square as usize];
-            draw_bb(knightmoves);
         }
         "script" => {
             let p: i32 = perft(&mut board, 1, 1, true);
