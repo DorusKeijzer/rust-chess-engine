@@ -58,6 +58,10 @@ fn main() {
             let p: i32 = perft(&mut board, 1, 1, true);
             println!("{p}");
         }
+        "quiet" => {
+            let p: i32 = perft(&mut board, 1, 1, false);
+            println!("{p}");
+        }
         "draw" => board.draw(),
         _ => {
             println!("Not a valid mode :^)")
