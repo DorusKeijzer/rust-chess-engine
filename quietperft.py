@@ -46,4 +46,4 @@ if len(argv) > 2:
         # makes move and prints the resulting board state.
         move = argv[3]
         board.push_san(move)
-        print(board.board_fen())
+        print(board.fen())

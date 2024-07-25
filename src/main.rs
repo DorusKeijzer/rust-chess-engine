@@ -44,10 +44,6 @@ fn main() {
         println!("Usage: {} <argument 1> <argument 2>", args[0]);
         std::process::exit(1);
     }
-    for arg in args.clone() {
-        println!("{}", arg);
-    }
-
     let mode = &args[1];
     let fen = &args[2];
     let mut board = Board::new(Some(fen));
