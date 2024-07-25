@@ -50,12 +50,14 @@ find_problem_position() {
     fi
     
     if [ "$current_depth" = "1" ]; then
-        echo "problem at depth $current_depth in position: "
+        echo "problem at depth $current_depth"
         echo $current_fen
         echo "python count: $python_count"
         echo "rust count:   $rust_count"
+        ./comparepython.sh "$current_fen"
         return
     fi
+
     
     # Get move list from Python (assuming it's correct)
     moves=$(python "$pythonScriptPath" "$current_fen" "alg_moves")
