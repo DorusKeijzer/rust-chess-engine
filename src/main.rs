@@ -40,10 +40,14 @@ use utils::{algebraic_to_square, square_to_algebraic};
 fn main() {
     // Get the argument from the command line
     let args: Vec<String> = env::args().collect();
-    if args.len() != 3 {
+    if args.len() != 3 && args.len() != 4 {
         println!("Usage: {} <argument 1> <argument 2>", args[0]);
         std::process::exit(1);
     }
+    for arg in args.clone() {
+        println!("{}", arg);
+    }
+
     let mode = &args[1];
     let fen = &args[2];
     let mut board = Board::new(Some(fen));
@@ -59,7 +63,8 @@ fn main() {
             println!("{p}");
         }
         "quiet" => {
-            let p: i32 = perft(&mut board, 1, 1, false);
+            let depth: i32 = args[3].parse().unwrap();
+            let p: i32 = perft(&mut board, depth, 1, false);
             println!("{p}");
         }
         "draw" => board.draw(),
