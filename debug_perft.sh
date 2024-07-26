@@ -8,6 +8,7 @@ fi
 fen="$1"
 depth="$2"
 verbose=false
+problem_positions=0
 
 # Check for verbose flag
 if [ "$3" = "--verbose" ]; then
@@ -54,7 +55,9 @@ find_problem_position() {
         echo $current_fen
         echo "python count: $python_count"
         echo "rust count:   $rust_count"
-        ./comparepython.sh "$current_fen"
+        ./comparepython.sh "$current_fen" --norebuild
+
+        problem_positions=$((problem_positions + 1))
         return
     fi
 
@@ -70,3 +73,5 @@ find_problem_position() {
 }
 
 find_problem_position "$fen" "$depth"
+echo "Done. Found $problem_positions problem positions"
+

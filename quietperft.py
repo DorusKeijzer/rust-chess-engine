@@ -35,7 +35,7 @@ if len(argv) > 2:
         # lists all legal moves in the same notatio nas the rust program
         legal_moves = list(board.legal_moves)
         for move in legal_moves:
-            print(f"{board.piece_at(move.from_square)} from {chess.square_name(
+            print(f"{board.piece_at(move.from_square).upper()} from {chess.square_name(
                 move.from_square)} to {chess.square_name(move.to_square)}")
     elif argv[2] == "alg_moves":
         # lists all legal moves in algebraic notation

@@ -7,11 +7,16 @@ if [ $# -eq 0 ]; then
 fi
 
 argument="$1"
+norebuild=false
+if [ "$2" = "--norebuild" ]; then
+    norebuild=true
+fi
 
-echo "Building latest version of chess engine..."
+if ! $norebuild; then 
+    echo "Building latest version of chess engine..."
 # builds rust program
-cargo build --release -q
-
+    cargo build --release -q
+fi
 # Define the paths to the Python and Rust executables
 pythonScriptPath="pythontest.py"
 rustExecutablePath="target/release/chess"
