@@ -259,7 +259,6 @@ pub fn attacks(board: &Board, turn: Turn) -> u64 {
     .iter()
     .enumerate()
     {
-        //println!("{}", piece);
         let bb = board.bitboards[i + offset];
         for bit in BitIter(bb) {
             attacks |= match piece {
@@ -305,16 +304,8 @@ fn check(board: &mut Board) -> bool {
     .iter()
     .enumerate()
     {
-        //println!("{}", piece);
         let bb = board.bitboards[i + offset];
         for bit in BitIter(bb) {
-            //if piece == &Piece::Knight {
-            //    println!("knight:");
-            //    utils::draw_bb(utils::mask(bit as u8));
-            //    let knight_attacks = knight_square_pseudo_legal(board, bit as usize, true);
-            //    println!("attack pattern:");
-            //    utils::draw_bb(knight_attacks);
-            //}
             attacks |= match piece {
                 Piece::Pawn => pawn_captures(board, bit as usize, true),
                 Piece::Rook => rook_attacks(occupied, own, bit as usize),
@@ -656,25 +647,11 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
             attacks(board, Turn::Black),
         ),
     };
-    println!("rooks");
-    utils::draw_bb(rooks);
-
-    println!("castling paths");
-    utils::draw_bb(castling_paths[0]);
-    utils::draw_bb(castling_paths[1]);
-
-    println!("enemy attacks");
-    utils::draw_bb(enemy_attacks);
 
     let king_bitboard = match board.current_state.turn {
         Turn::White => board.bitboards[2],
         Turn::Black => board.bitboards[8],
     };
-    println!("king bb:");
-    utils::draw_bb(king_bitboard);
-
-    println!("king start");
-    utils::draw_bb(king_start);
 
     if king_bitboard & king_start == 0 {
         return result;
@@ -734,25 +711,12 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
     ];
 
     for (can_castle, path, rook_position, castling_move) in castling_moves.iter() {
-        //println!("{}, {}", can_castle, castling_move);
-        //println!("path");
-        //draw_bb(*path);
-        //println!("occupied");
-        //draw_bb(occupied);
-        //println!("rook poston");
-        draw_bb(rooks);
-        draw_bb(enemy_attacks);
-        println!("{}", occupied & path == 0);
-        println!("{}", rooks & rook_position != 0);
-        println!("{}", path & enemy_attacks == 0);
-        println!("{}", rooks & enemy_attacks == 0);
         if *can_castle
             && occupied & path == 0
             && rooks & rook_position != 0
             && path & enemy_attacks == 0
             && rooks & enemy_attacks == 0
         {
-            //println!("Pushing {}", castling_move.clone());
             result.push(castling_move.clone());
         }
     }

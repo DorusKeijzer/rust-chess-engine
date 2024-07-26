@@ -99,8 +99,8 @@ mod tests {
             );
         }
         #[test]
-        fn dont_generate_castling_white() {
-            // shouldn't pass because rooks are threatened
+        fn also_generate_castling_white() {
+            // it should be irrelevant whether rooks are threatened
             let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"));
             let rook_move = Move {
                 from: 63,
@@ -115,11 +115,14 @@ mod tests {
             for m in moves.clone() {
                 println!("{m}");
             }
-            assert!(!moves.contains(&rook_move), "Rooks are threatened  ");
+            assert!(
+                moves.contains(&rook_move),
+                "Doesn't matter if rooks are threatened  "
+            );
         }
         #[test]
-        fn dont_generate_castling_blacks() {
-            // shouldn't pass because rooks are threatened
+        fn also_generate_castling_blacks() {
+            // it should be irrelevant if rooks are threatened
             let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/R3K2R b kq - 0 1"));
             let rook_move = Move {
                 from: 0,
@@ -134,8 +137,56 @@ mod tests {
             for m in moves.clone() {
                 println!("{m}");
             }
-            assert!(!moves.contains(&rook_move), "Rooks are threatened");
+            assert!(
+                moves.contains(&rook_move),
+                "Doesn't matter if rooks are threatened"
+            );
         }
+        #[test]
+        fn rooks_path_threatened() {
+            // it should be irrelevant if rooks are threatened
+            let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/1R2K2R b kq - 0 1"));
+            let rook_move = Move {
+                from: 0,
+                to: 3,
+                piece: Piece::Rook, // Rook
+                captured: None,
+                promotion: None,
+                castled: true,
+            };
+            println!("AAAAAAAAA");
+            board.draw();
+            let moves = legalmoves::generate_legal_moves(&mut board);
+            for m in moves.clone() {
+                println!("{m}");
+            }
+            assert!(
+                moves.contains(&rook_move),
+                "rook path being threatened is not relevant"
+            );
+        }
+        #[test]
+        fn kings_path_threatened() {
+            // it should be irrelevant if rooks are threatened
+            let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/3RKR2 b kq - 0 1"));
+            let rook_move = Move {
+                from: 0,
+                to: 3,
+                piece: Piece::Rook, // Rook
+                captured: None,
+                promotion: None,
+                castled: true,
+            };
+
+            println!("BBBBBBBBB");
+            board.draw();
+            let moves = legalmoves::generate_legal_moves(&mut board);
+            for m in moves.clone() {
+                println!("{m}");
+            }
+            assert!(!moves.contains(&rook_move), "kings path is threatened");
+        }
+
         #[test]
         fn generate_castling_black() {
             let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/8 b kqKQ - 0 1"));
