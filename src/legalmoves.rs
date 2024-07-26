@@ -238,6 +238,44 @@ fn legal_moves(board: &mut Board, piece: Piece) -> Vec<Move> {
     return result;
 }
 
+pub fn attacks(board: &Board, turn: Turn) -> u64 {
+    let (offset, own) = match turn {
+        Turn::White => (6, board.all_black()),
+        Turn::Black => (0, board.all_white()),
+    };
+
+    let occupied = board.occupied();
+    let mut attacks = 0;
+
+    // for every piece off the opponent, enumerate the instance on the board and add their attack pattern
+    for (i, piece) in vec![
+        Piece::Pawn,
+        Piece::Rook,
+        Piece::King,
+        Piece::Knight,
+        Piece::Queen,
+        Piece::Bishop,
+    ]
+    .iter()
+    .enumerate()
+    {
+        //println!("{}", piece);
+        let bb = board.bitboards[i + offset];
+        for bit in BitIter(bb) {
+            attacks |= match piece {
+                Piece::Pawn => pawn_captures(board, bit as usize, true),
+                Piece::Rook => rook_attacks(occupied, own, bit as usize),
+                Piece::Bishop => bishop_attacks(occupied, own, bit as usize),
+                Piece::Knight => knight_square_pseudo_legal(board, bit as usize, true),
+                Piece::King => king_square_pseudo_legal(board, bit as usize),
+                Piece::Queen => queen_attacks(occupied, own, bit as usize),
+            };
+        }
+    }
+
+    attacks
+}
+
 fn check(board: &mut Board) -> bool {
     // king:  blacks king if black to move
     // offset:  white pieces if black to move
@@ -581,6 +619,16 @@ pub fn rook_attacks(occupied: u64, own: u64, square: usize) -> u64 {
         & !own;
 }
 
+const WHITE_KING_START: u64 = 0x1000000000000000;
+const BLACK_KING_START: u64 = 0x10;
+const WHITE_KINGSIDE_ROOK: u64 = 0x8000000000000000;
+const WHITE_QUEENSIDE_ROOK: u64 = 0x100000000000000;
+const BLACK_KINGSIDE_ROOK: u64 = 0x80;
+const BLACK_QUEENSIDE_ROOK: u64 = 0x1;
+const WHITE_KINGSIDE_CASTLING_PATH: u64 = 0x6000000000000000;
+const WHITE_QUEENSIDE_CASTLING_PATH: u64 = 0xe00000000000000;
+const BLACK_KINGSIDE_CASTLING_PATH: u64 = 0x60;
+const BLACK_QUEENSIDE_CASTLING_PATH: u64 = 0xe;
 /// returns all the currently legal castling moves for the current player
 ///
 /// castling moves are indicated by setting the castled field to `true` in the move struct
@@ -592,73 +640,120 @@ pub fn rook_attacks(occupied: u64, own: u64, square: usize) -> u64 {
 /// function calls)
 ///
 pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
-    let mut result: Vec<Move> = Vec::new();
-    if board.current_state.turn == Turn::White && board.bitboards[2] & 0x1000000000000000 != 0 {
-        // king must exist
-        // White kingside castling
-        if board.current_state.can_castle_kingside()
-            && (occupied & 0x6000000000000000 == 0)
-            && board.bitboards[1] & 0x8000000000000000 != 0
-        // rook must be in right place
-        // no pieces in F1, G1
-        {
-            result.push(Move {
-                from: 63,
-                to: 61,
-                piece: Piece::Rook, // Rook's piece representation
-                promotion: None,
-                captured: None,
-                castled: true,
-            });
-        }
+    let mut result = Vec::new();
 
-        // White queenside castling
-        if board.current_state.can_castle_queenside()
-            && (occupied & 0xe00000000000000 == 0)
-            && board.bitboards[1] & 0x100000000000000 != 0
-        // no pieces in B1, C1, D1
-        {
-            result.push(Move {
-                from: 56,
-                to: 59,
-                piece: Piece::Rook, // Rook's piece representation
-                promotion: None,
-                captured: None,
-                castled: true,
-            });
-        }
-    } else if board.current_state.turn == Turn::Black && board.bitboards[8] & 0x10 != 0 {
-        // king must be in the right place
-        // Black kingside castling
-        if board.current_state.can_castle_kingside()
-            && (occupied & 0x60 == 0)
-            && board.bitboards[7] & 0x80 != 0
-        // no pieces in F8, G8
-        {
-            result.push(Move {
-                from: 7,
-                to: 5,
-                piece: Piece::Rook, // Rook's piece representation
-                promotion: None,
-                captured: None,
-                castled: true,
-            });
-        }
+    let (king_start, rooks, castling_paths, enemy_attacks) = match board.current_state.turn {
+        Turn::White => (
+            WHITE_KING_START,
+            board.bitboards[1],
+            [WHITE_KINGSIDE_CASTLING_PATH, WHITE_QUEENSIDE_CASTLING_PATH],
+            attacks(board, Turn::White),
+        ),
+        Turn::Black => (
+            BLACK_KING_START,
+            board.bitboards[7],
+            [BLACK_KINGSIDE_CASTLING_PATH, BLACK_QUEENSIDE_CASTLING_PATH],
+            attacks(board, Turn::Black),
+        ),
+    };
+    println!("rooks");
+    utils::draw_bb(rooks);
 
-        // Black queenside castling
-        if board.current_state.can_castle_queenside()
-            && (occupied & 0xe == 0)
-            && board.bitboards[7] & 0x1 != 0
-        // no pieces in B8, C8, D8
-        {
-            result.push(Move {
-                from: 0,
-                to: 3,
-                piece: Piece::Rook, // Rook's piece representation
+    println!("castling paths");
+    utils::draw_bb(castling_paths[0]);
+    utils::draw_bb(castling_paths[1]);
+
+    println!("enemy attacks");
+    utils::draw_bb(enemy_attacks);
+
+    let king_bitboard = match board.current_state.turn {
+        Turn::White => board.bitboards[2],
+        Turn::Black => board.bitboards[8],
+    };
+    println!("king bb:");
+    utils::draw_bb(king_bitboard);
+
+    println!("king start");
+    utils::draw_bb(king_start);
+
+    if king_bitboard & king_start == 0 {
+        return result;
+    }
+
+    let castling_moves = [
+        (
+            board.current_state.can_castle_kingside(),
+            castling_paths[0],
+            if board.current_state.turn == Turn::White {
+                WHITE_KINGSIDE_ROOK
+            } else {
+                BLACK_KINGSIDE_ROOK
+            },
+            Move {
+                from: if board.current_state.turn == Turn::White {
+                    63
+                } else {
+                    7
+                },
+                to: if board.current_state.turn == Turn::White {
+                    61
+                } else {
+                    5
+                },
+                piece: Piece::Rook,
                 promotion: None,
                 captured: None,
                 castled: true,
-            });
+            },
+        ),
+        (
+            board.current_state.can_castle_queenside(),
+            castling_paths[1],
+            if board.current_state.turn == Turn::White {
+                WHITE_QUEENSIDE_ROOK
+            } else {
+                BLACK_QUEENSIDE_ROOK
+            },
+            Move {
+                from: if board.current_state.turn == Turn::White {
+                    56
+                } else {
+                    0
+                },
+                to: if board.current_state.turn == Turn::White {
+                    59
+                } else {
+                    3
+                },
+                piece: Piece::Rook,
+                promotion: None,
+                captured: None,
+                castled: true,
+            },
+        ),
+    ];
+
+    for (can_castle, path, rook_position, castling_move) in castling_moves.iter() {
+        //println!("{}, {}", can_castle, castling_move);
+        //println!("path");
+        //draw_bb(*path);
+        //println!("occupied");
+        //draw_bb(occupied);
+        //println!("rook poston");
+        draw_bb(rooks);
+        draw_bb(enemy_attacks);
+        println!("{}", occupied & path == 0);
+        println!("{}", rooks & rook_position != 0);
+        println!("{}", path & enemy_attacks == 0);
+        println!("{}", rooks & enemy_attacks == 0);
+        if *can_castle
+            && occupied & path == 0
+            && rooks & rook_position != 0
+            && path & enemy_attacks == 0
+            && rooks & enemy_attacks == 0
+        {
+            //println!("Pushing {}", castling_move.clone());
+            result.push(castling_move.clone());
         }
     }
     result

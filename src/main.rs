@@ -50,10 +50,11 @@ fn main() {
     match mode.as_str() {
         "default" => {
             let mut board = Board::new(Some(
-                "rnbqkbnr/pppp1ppp/8/3Np3/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2",
+                "r3k2r/p1ppqpb1/Bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPB1PPP/R3K2R w KQkq - ",
             ));
-
+            board.draw();
             let legalmoves = generate_legal_moves(&mut board);
+            utils::draw_bb(legalmoves::attacks(&board, Turn::Black))
         }
         "script" => {
             let p: i32 = perft(&mut board, 1, 1, true);
