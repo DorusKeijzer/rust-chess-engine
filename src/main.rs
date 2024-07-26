@@ -12,8 +12,8 @@ use crate::{
     legalmoves::{Move, Piece},
     utils::{draw_bb, find_bitboard, BitIter},
 };
-use legalmoves::rook_attacks;
 use legalmoves::unmake_move;
+use legalmoves::{generate_legal_moves, rook_attacks};
 use legalmoves::{make_move, perft};
 use utils::{algebraic_to_square, square_to_algebraic};
 
@@ -49,10 +49,11 @@ fn main() {
     let mut board = Board::new(Some(fen));
     match mode.as_str() {
         "default" => {
-            board.draw();
-            board.print_state();
-            let square = algebraic_to_square("e5").unwrap();
-            let knightmoves = !board.all_white() & legalmoves::KNIGHT_MOVES[square as usize];
+            let mut board = Board::new(Some(
+                "rnbqkbnr/pppp1ppp/8/3Np3/8/8/PPPPPPPP/R1BQKBNR b KQkq - 1 2",
+            ));
+
+            let legalmoves = generate_legal_moves(&mut board);
         }
         "script" => {
             let p: i32 = perft(&mut board, 1, 1, true);

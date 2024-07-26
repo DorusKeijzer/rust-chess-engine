@@ -7,7 +7,6 @@ use lazy_static::lazy_static;
 use std::ops::Index;
 use std::slice::SliceIndex;
 use std::{fmt, iter::Enumerate};
-
 lazy_static! {
     /// Stores all the ray attacks.
     ///
@@ -226,6 +225,9 @@ fn legal_moves(board: &mut Board, piece: Piece) -> Vec<Move> {
     // makes move and if king not in check, push to results
     for chess_move in moves {
         make_move(board, &chess_move, false); // don't update state so we won't run check() for the wrong color
+                                              // println!("{} - check: {}", chess_move, check(board));
+                                              //println!("draw:");
+                                              // board.draw();
         if !check(board) {
             result.push(chess_move)
         }
@@ -265,13 +267,21 @@ fn check(board: &mut Board) -> bool {
     .iter()
     .enumerate()
     {
+        //println!("{}", piece);
         let bb = board.bitboards[i + offset];
         for bit in BitIter(bb) {
+            //if piece == &Piece::Knight {
+            //    println!("knight:");
+            //    utils::draw_bb(utils::mask(bit as u8));
+            //    let knight_attacks = knight_square_pseudo_legal(board, bit as usize, true);
+            //    println!("attack pattern:");
+            //    utils::draw_bb(knight_attacks);
+            //}
             attacks |= match piece {
                 Piece::Pawn => pawn_captures(board, bit as usize, true),
                 Piece::Rook => rook_attacks(occupied, own, bit as usize),
                 Piece::Bishop => bishop_attacks(occupied, own, bit as usize),
-                Piece::Knight => knight_square_pseudo_legal(board, bit as usize),
+                Piece::Knight => knight_square_pseudo_legal(board, bit as usize, true),
                 Piece::King => king_square_pseudo_legal(board, bit as usize),
                 Piece::Queen => queen_attacks(occupied, own, bit as usize),
             };
@@ -299,7 +309,7 @@ fn pseudo_legal_moves(board: &Board, piece: Piece) -> Vec<Move> {
             }
             Piece::Rook => rook_attacks(occupied_squares, own, square as usize),
             Piece::Bishop => bishop_attacks(occupied_squares, own, square as usize),
-            Piece::Knight => knight_square_pseudo_legal(board, square as usize),
+            Piece::Knight => knight_square_pseudo_legal(board, square as usize, false),
             Piece::King => king_square_pseudo_legal(board, square as usize),
             Piece::Queen => queen_attacks(occupied_squares, own, square as usize),
         };
@@ -325,10 +335,17 @@ fn king_square_pseudo_legal(board: &Board, square: usize) -> u64 {
 ///
 /// It returns a bitboard representing where the knight could move from the given square,
 /// considering other pieces on the board and the turn's color.
-fn knight_square_pseudo_legal(board: &Board, square: usize) -> u64 {
-    match board.current_state.turn {
-        Turn::Black => !board.all_black() & KNIGHT_MOVES[square],
-        Turn::White => !board.all_white() & KNIGHT_MOVES[square],
+fn knight_square_pseudo_legal(board: &Board, square: usize, exclude_king: bool) -> u64 {
+    if exclude_king {
+        match board.current_state.turn {
+            Turn::Black => (!(board.all_black()) | board.bitboards[8]) & KNIGHT_MOVES[square],
+            Turn::White => (!(board.all_white()) | board.bitboards[2]) & KNIGHT_MOVES[square],
+        }
+    } else {
+        match board.current_state.turn {
+            Turn::Black => !board.all_black() & KNIGHT_MOVES[square],
+            Turn::White => !board.all_white() & KNIGHT_MOVES[square],
+        }
     }
 }
 
