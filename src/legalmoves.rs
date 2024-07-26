@@ -617,9 +617,9 @@ const WHITE_QUEENSIDE_ROOK: u64 = 0x100000000000000;
 const BLACK_KINGSIDE_ROOK: u64 = 0x80;
 const BLACK_QUEENSIDE_ROOK: u64 = 0x1;
 const WHITE_KINGSIDE_CASTLING_PATH: u64 = 0x6000000000000000;
-const WHITE_QUEENSIDE_CASTLING_PATH: u64 = 0xe00000000000000;
+const WHITE_QUEENSIDE_CASTLING_PATH: u64 = 0xC00000000000000;
 const BLACK_KINGSIDE_CASTLING_PATH: u64 = 0x60;
-const BLACK_QUEENSIDE_CASTLING_PATH: u64 = 0xe;
+const BLACK_QUEENSIDE_CASTLING_PATH: u64 = 0xc;
 /// returns all the currently legal castling moves for the current player
 ///
 /// castling moves are indicated by setting the castled field to `true` in the move struct
@@ -715,11 +715,13 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
             && occupied & path == 0
             && rooks & rook_position != 0
             && path & enemy_attacks == 0
-            && rooks & enemy_attacks == 0
+            && king_start & enemy_attacks == 0
         {
             result.push(castling_move.clone());
         }
     }
+    draw_bb(king_start);
+    draw_bb(enemy_attacks);
     result
 }
 

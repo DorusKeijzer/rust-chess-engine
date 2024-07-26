@@ -99,7 +99,7 @@ mod tests {
             );
         }
         #[test]
-        fn also_generate_castling_white() {
+        fn rooks_threatened_white() {
             // it should be irrelevant whether rooks are threatened
             let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"));
             let rook_move = Move {
@@ -121,7 +121,29 @@ mod tests {
             );
         }
         #[test]
-        fn also_generate_castling_blacks() {
+        fn king_in_check() {
+            // it should be irrelevant whether rooks are threatened
+            let mut board = Board::new(Some("r3k2r/8/8/4r3/8/8/8/R3K2R w KQkq - 0 1"));
+            let rook_move = Move {
+                from: 63,
+                to: 61,
+                piece: Piece::Rook, // Rook
+                captured: None,
+                promotion: None,
+                castled: true,
+            };
+            board.draw();
+            let moves = legalmoves::generate_legal_moves(&mut board);
+            for m in moves.clone() {
+                println!("{m}");
+            }
+            assert!(
+                !moves.contains(&rook_move),
+                "King is in check, cannot castle  "
+            );
+        }
+        #[test]
+        fn rooks_threatened_back() {
             // it should be irrelevant if rooks are threatened
             let mut board = Board::new(Some("r3k2r/8/8/8/8/8/8/R3K2R b kq - 0 1"));
             let rook_move = Move {
