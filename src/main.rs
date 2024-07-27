@@ -18,10 +18,9 @@ use legalmoves::{make_move, perft};
 use utils::{algebraic_to_square, square_to_algebraic};
 
 /// TODO prio order:
-/// Debug castling:
-///     castling possible when rooks threatened
-///     
 /// Debug EP:
+///     
+///     EP is not properly transfered between moves
 ///     possible need for pin check
 ///
 /// implement check
@@ -62,7 +61,7 @@ fn main() {
         }
         "quiet" => {
             let depth: i32 = args[3].parse().unwrap();
-            let p: i32 = perft(&mut board, depth, 1, false);
+            let p: i32 = perft(&mut board, depth, depth, false);
             println!("{p}");
         }
         "draw" => board.draw(),
@@ -139,7 +138,7 @@ mod tests {
             }
             assert!(
                 !moves.contains(&rook_move),
-                "King is in check, cannot castle  "
+                "Doesn't matter if rooks are threatened  "
             );
         }
         #[test]
@@ -755,8 +754,6 @@ mod tests {
                 "En passant move not generated for black."
             );
         }
-
-        // Add more tests for edge cases if needed
     }
 
     #[cfg(test)]

@@ -720,8 +720,6 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
             result.push(castling_move.clone());
         }
     }
-    draw_bb(king_start);
-    draw_bb(enemy_attacks);
     result
 }
 
@@ -995,8 +993,8 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 /// Returns:
 /// - The number of possible moves at the specified depth.
 pub fn perft(board: &mut Board, depth: i32, startdepth: i32, verbose: bool) -> i32 {
-    if depth == 0 {
-        return 1;
+    if depth == 1 {
+        return generate_legal_moves(board).len() as i32;
     }
 
     let moves = generate_legal_moves(board);
