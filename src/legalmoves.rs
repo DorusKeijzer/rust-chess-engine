@@ -177,18 +177,17 @@ fn init_king_tables() -> [u64; 64] {
 
 pub fn generate_legal_moves(board: &mut Board) -> Vec<Move> {
     let mut result = Vec::new();
-    if !check(board) {
-        for &piece in &[
-            Piece::Pawn,
-            Piece::Rook,
-            Piece::Bishop,
-            Piece::King,
-            Piece::Knight,
-            Piece::Queen,
-        ] {
-            result.extend(legal_moves(board, piece));
-        }
+    for &piece in &[
+        Piece::Pawn,
+        Piece::Rook,
+        Piece::Bishop,
+        Piece::King,
+        Piece::Knight,
+        Piece::Queen,
+    ] {
+        result.extend(legal_moves(board, piece));
     }
+
     result.extend(castling(board.occupied(), board));
     result
 }
