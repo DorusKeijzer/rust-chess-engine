@@ -43,11 +43,15 @@ pub fn init_ray_attacks() -> [[u64; 64]; 8] {
 }
 
 pub fn format_for_debug(mut board: Board, depth: i32) {
+    let total = perft(&mut board, depth, depth, false);
     for m in generate_legal_moves(&mut board) {
         let alg_move = alg_move(&m);
+        make_move(&mut board, &m, true);
         let perft_score = perft(&mut board, depth - 1, depth - 1, false);
         println!("{} {}", alg_move, perft_score);
+        unmake_move(&mut board, &m, true);
     }
+    println!("\n{}", total);
 }
 
 fn alg_move(chess_move: &Move) -> String {
@@ -566,6 +570,40 @@ pub struct Move {
     pub promotion: Option<Piece>, // Optional promotion piece
     pub captured: Option<Piece>,  // Optional captured piece
     pub castled: bool, // whether castling happened in this turn (responsible for moving king)
+}
+
+impl Move {
+    pub fn alg_move(&self) -> String {
+        let mut from = square_to_algebraic(&self.from).to_owned();
+        let mut to = square_to_algebraic(&self.to);
+        if self.castled {
+            from = match self.from {
+                63 => "e1".to_owned(),
+                56 => "e1".to_owned(),
+                0 => "e8".to_owned(),
+                7 => "e8".to_owned(),
+                _ => from,
+            };
+            to = match self.to {
+                61 => "g1".to_string(),
+                59 => "c1".to_string(),
+                5 => "g8".to_string(),
+                3 => "c8".to_string(),
+                _ => to,
+            }
+        }
+        let promotion = match self.promotion {
+            Some(Piece::Rook) => "R".to_string(),
+            Some(Piece::Queen) => "Q".to_string(),
+            Some(Piece::Knight) => "N".to_string(),
+            Some(Piece::Bishop) => "B".to_string(),
+            _ => "".to_string(),
+        };
+
+        from.push_str(&to);
+        from.push_str(&promotion);
+        from
+    }
 }
 
 impl fmt::Display for Piece {

@@ -4,7 +4,6 @@ mod board; // keeps track of the board
 mod legalmoves;
 mod utils; // utility functions // legal move generation
 use std::env;
-
 use std::fs::Permissions;
 
 use crate::{
@@ -35,16 +34,101 @@ use utils::{algebraic_to_square, square_to_algebraic};
 /// Improve board state evaluation
 /// Zobrist hashing
 /// Opening books
+use std::io::{self, BufRead, Write};
 
 fn main() {
+    let mut engine = ChessEngine::new(); // You'll need to implement this
+
+    let stdin = io::stdin();
+    let mut stdout = io::stdout();
+    let mut buffer = String::new();
+
+    loop {
+        buffer.clear();
+        stdout.flush().unwrap();
+        stdin.lock().read_line(&mut buffer).unwrap();
+
+        let input = buffer.trim();
+
+        match input {
+            "uci" => {
+                println!("id name Meeko");
+                println!("id author YourName");
+                // Add any options here
+                println!("uciok");
+            }
+            "isready" => println!("readyok"),
+            "ucinewgame" => engine.new_game(),
+            "quit" => break,
+            _ if input.starts_with("position") => engine.set_position(input),
+            _ if input.starts_with("go") => {
+                let best_move = engine.find_best_move(input);
+                println!("bestmove {}", best_move);
+            }
+            _ => println!("Unknown command: {}", input),
+        }
+    }
+}
+
+struct ChessEngine {
+    board: Board,           // Add fields as needed
+    starting_pos_set: bool, // whether the starting position is set to prevent backtracking
+}
+
+impl ChessEngine {
+    fn new() -> Self {
+        let board = Board::new(None);
+        let starting_pos_set = false;
+        // Initialize your engine
+        ChessEngine {
+            board,
+            starting_pos_set,
+        }
+    }
+
+    fn new_game(&mut self) {
+        self.board = Board::new(Some(
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        ));
+        self.starting_pos_set = false;
+    }
+    fn set_position(&mut self, command: &str) {
+        // Parse the position command and set up the board
+        if !self.starting_pos_set {
+            match command {
+                "position startpos" => {
+                    self.board = Board::new(Some(
+                        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                    ))
+                }
+                _ if command.starts_with("position ") => self.board = Board::new(Some(command)),
+                _ => println!("unknown command"),
+            };
+        } else {
+            let inputs = command.split(" ");
+            // algebraic to move.. .
+        }
+    }
+
+    fn find_best_move(&mut self, command: &str) -> String {
+        // Parse the go command, search for the best move, and return it
+        //
+        let moves = legalmoves::generate_legal_moves(&mut self.board);
+        moves[1].alg_move()
+    }
+}
+
+fn old_main() {
     // Get the argument from the command line
     let args: Vec<String> = env::args().collect();
+    if args.len() == 0 {}
     if args.len() != 3 && args.len() != 4 {
         println!("Usage: {} <argument 1> <argument 2>", args[0]);
         std::process::exit(1);
     }
     let mode = &args[1];
     let fen = &args[2];
+
     let mut board = Board::new(Some(fen));
     match mode.as_str() {
         "default" => {
