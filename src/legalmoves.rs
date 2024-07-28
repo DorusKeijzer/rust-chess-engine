@@ -177,15 +177,17 @@ fn init_king_tables() -> [u64; 64] {
 
 pub fn generate_legal_moves(board: &mut Board) -> Vec<Move> {
     let mut result = Vec::new();
-    for &piece in &[
-        Piece::Pawn,
-        Piece::Rook,
-        Piece::Bishop,
-        Piece::King,
-        Piece::Knight,
-        Piece::Queen,
-    ] {
-        result.extend(legal_moves(board, piece));
+    if !check(board) {
+        for &piece in &[
+            Piece::Pawn,
+            Piece::Rook,
+            Piece::Bishop,
+            Piece::King,
+            Piece::Knight,
+            Piece::Queen,
+        ] {
+            result.extend(legal_moves(board, piece));
+        }
     }
     result.extend(castling(board.occupied(), board));
     result
@@ -553,22 +555,22 @@ impl fmt::Display for Move {
             ""
         };
 
+        //write!(
+        //    f,
+        //    "{} from {} to {}",
+        //    self.piece,
+        //    utils::square_to_algebraic(&self.from),
+        //    utils::square_to_algebraic(&self.to),
+        //)
         write!(
             f,
-            "{} from {} to {}",
+            "{} from {} to {} {}{}",
             self.piece,
             utils::square_to_algebraic(&self.from),
             utils::square_to_algebraic(&self.to),
+            castling,
+            capture
         )
-        // write!(
-        //     f,
-        //     "{} from {} to {} {}{}",
-        //     self.piece,
-        //     utils::square_to_algebraic(self.from),
-        //     utils::square_to_algebraic(self.to),
-        //     castling,
-        //     capture
-        // )
     }
 }
 
@@ -927,6 +929,20 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
     board.bitboards[bb_index] ^= utils::mask(chess_move.from);
 }
 
+// for EP state updates
+
+const BLACK_PAWN_START: [u8; 8] = [8, 9, 10, 11, 12, 13, 14, 15];
+const BLACK_PAWN_DOUBLE_MOVE: [u8; 8] = [24, 25, 26, 27, 28, 29, 30, 31];
+const WHITE_PAWN_START: [u8; 8] = [48, 49, 50, 51, 52, 53, 54, 55];
+const WHITE_PAWN_DOUBLE_MOVE: [u8; 8] = [32, 33, 34, 35, 36, 37, 38, 39];
+
+fn is_double_pawn_move(from: u8, to: u8, color: Turn) -> bool {
+    match color {
+        Turn::White => WHITE_PAWN_START.contains(&from) && WHITE_PAWN_DOUBLE_MOVE.contains(&to),
+        Turn::Black => BLACK_PAWN_START.contains(&from) && BLACK_PAWN_DOUBLE_MOVE.contains(&to),
+    }
+}
+
 pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
     let mut new_state = board.current_state.clone();
     if chess_move.castled
@@ -967,6 +983,15 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
     board.bitboards[bb_index] ^= utils::mask(chess_move.from);
+
+    // set or reset EP state
+    new_state.en_passant = if chess_move.piece == Piece::Pawn
+        && is_double_pawn_move(chess_move.from, chess_move.to, board.current_state.turn)
+    {
+        Some(((chess_move.from + chess_move.to) / 2) as u8)
+    } else {
+        None
+    };
 
     if chess_move.promotion.is_some() {
         board.bitboards[bb_index] &= !utils::mask(chess_move.to); // remove pawn

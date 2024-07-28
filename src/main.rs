@@ -754,8 +754,167 @@ mod tests {
                 "En passant move not generated for black."
             );
         }
+
+        #[test]
+        fn test_white_en_passant_capture_on_a_file() {
+            let mut board = Board::new(Some("8/8/8/pP6/8/8/8/8 w - a6 0 1"));
+            let moves = legalmoves::generate_legal_moves(&mut board);
+            let en_passant_move = Move {
+                from: algebraic_to_square("b5").unwrap(),
+                to: algebraic_to_square("a6").unwrap(),
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn),
+                promotion: None,
+                castled: false,
+            };
+            assert!(
+                moves.contains(&en_passant_move),
+                "En passant move not generated on a-file for white."
+            );
+        }
+
+        #[test]
+        fn test_black_en_passant_capture_on_h_file() {
+            let mut board = Board::new(Some("8/8/8/8/5Pp1/8/8/8 b - f3 0 1"));
+            let moves = legalmoves::generate_legal_moves(&mut board);
+            let en_passant_move = Move {
+                from: algebraic_to_square("g4").unwrap(),
+                to: algebraic_to_square("f3").unwrap(),
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn),
+                promotion: None,
+                castled: false,
+            };
+            assert!(
+                moves.contains(&en_passant_move),
+                "En passant move not generated on h-file for black."
+            );
+        }
+
+        #[test]
+        fn test_en_passant_not_available_after_one_move() {
+            let mut board = Board::new(Some("8/8/8/3pP3/8/8/8/8 w - d6 0 1"));
+            let moves = legalmoves::generate_legal_moves(&mut board);
+            let non_ep_move = Move {
+                from: algebraic_to_square("e5").unwrap(),
+                to: algebraic_to_square("e6").unwrap(),
+                piece: Piece::Pawn,
+                captured: None,
+                promotion: None,
+                castled: false,
+            };
+            make_move(&mut board, &non_ep_move, true);
+
+            let black_moves = legalmoves::generate_legal_moves(&mut board);
+            let invalid_ep_move = Move {
+                from: algebraic_to_square("d5").unwrap(),
+                to: algebraic_to_square("e6").unwrap(),
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn),
+                promotion: None,
+                castled: false,
+            };
+            assert!(
+                !black_moves.contains(&invalid_ep_move),
+                "En passant move should not be available after one move."
+            );
+        }
+
+        #[test]
+        fn test_en_passant_capture_updates_board_state() {
+            let mut board = Board::new(Some("8/8/8/3pP3/8/8/8/8 w - d6 0 1"));
+            let ep_move = Move {
+                from: algebraic_to_square("e5").unwrap(),
+                to: algebraic_to_square("d6").unwrap(),
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn),
+                promotion: None,
+                castled: false,
+            };
+            board.draw();
+            make_move(&mut board, &ep_move, true);
+            board.draw();
+            assert_eq!(
+                board.bitboards[0],
+                utils::mask(algebraic_to_square("d6").unwrap()),
+                "White pawn should be on d6"
+            );
+            assert_eq!(
+                board.bitboards[6] & utils::mask(algebraic_to_square("d5").unwrap()),
+                0,
+                "Black pawn should be removed from d5"
+            );
+
+            assert_eq!(
+                board.current_state.en_passant, None,
+                "En passant square should be reset after capture"
+            );
+        }
+        #[test]
+        fn test_en_passant_state_generation() {
+            let mut board = Board::new(Some(
+                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
+            ));
+            board.draw();
+
+            let pawn_move = legalmoves::Move {
+                from: algebraic_to_square("g2").unwrap(),
+
+                to: algebraic_to_square("g4").unwrap(),
+                piece: Piece::Pawn,
+                captured: None,
+                promotion: None,
+                castled: false,
+            };
+
+            make_move(&mut board, &pawn_move, true);
+            board.draw();
+            board.print_state();
+
+            assert_ne!(
+                board.current_state.en_passant, None,
+                "G2 should be the ep square"
+            );
+        }
+
+        #[test]
+        fn test_en_passant_capture_in_check() {
+            let mut board = Board::new(Some("8/8/8/3pP3/7k/7R/8/7K w - d6 0 1"));
+            let moves = legalmoves::generate_legal_moves(&mut board);
+            let ep_move = Move {
+                from: algebraic_to_square("e5").unwrap(),
+                to: algebraic_to_square("d6").unwrap(),
+                piece: Piece::Pawn,
+                captured: Some(Piece::Pawn),
+                promotion: None,
+                castled: false,
+            };
+
+            for m in moves.clone() {
+                println!("{}", m);
+            }
+            assert!(
+                moves.contains(&ep_move),
+                "En passant capture should be allowed when not in check."
+            );
+
+            board.draw();
+            // Now put the king in check
+            let mut board = Board::new(Some("8/8/8/3pP3/7k/8/8/r6K w - d6 0 1"));
+            let moves = legalmoves::generate_legal_moves(&mut board);
+            board.draw();
+
+            for m in moves.clone() {
+                println!("{}", m);
+            }
+            assert!(
+                !moves.contains(&ep_move),
+                "En passant capture should not be allowed when in check."
+            );
+        }
     }
 
+    ///     
     #[cfg(test)]
     mod perft {
         use super::*;
