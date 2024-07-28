@@ -13,8 +13,8 @@ use crate::{
     utils::{draw_bb, find_bitboard, BitIter},
 };
 use legalmoves::unmake_move;
+use legalmoves::{format_for_debug, make_move, perft};
 use legalmoves::{generate_legal_moves, rook_attacks};
-use legalmoves::{make_move, perft};
 use utils::{algebraic_to_square, square_to_algebraic};
 
 /// TODO prio order:
@@ -65,6 +65,11 @@ fn main() {
             println!("{p}");
         }
         "draw" => board.draw(),
+        "debug" => {
+            let depth: i32 = args[3].parse().unwrap();
+            assert!(depth > 1, "Depth must be greater than 1");
+            format_for_debug(board, depth);
+        }
         _ => {
             println!("Not a valid mode :^)")
         }
@@ -934,74 +939,81 @@ mod tests {
             );
         }
     }
-
-    ///     
     #[cfg(test)]
     mod perft {
         use super::*;
+
+        fn run_perft_test(fen: &str, expected_results: &[(u32, u64)]) {
+            let mut board = Board::new(Some(fen));
+            for (depth, expected) in expected_results {
+                let result = perft(&mut board, *depth as i32, *depth as i32, false);
+                if result != *expected as i32 {
+                    println!("Test failed at depth {}", depth);
+                    println!("FEN: {}", fen);
+                    println!("Expected: {}, Got: {}", expected, result);
+                    panic!("Perft test failed");
+                }
+            }
+        }
+
         #[test]
         fn perft_test_1() {
-            let mut board: Board =
-                Board::new(Some("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -"));
-            assert_eq!(perft(&mut board, 1, 1, false), 20);
-            assert_eq!(perft(&mut board, 2, 2, false), 400);
-            assert_eq!(perft(&mut board, 3, 3, false), 8902);
-            assert_eq!(perft(&mut board, 4, 4, false), 197_281);
-            assert_eq!(perft(&mut board, 5, 5, false), 4_865_609);
+            let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -";
+            let expected = vec![(1, 20), (2, 400), (3, 8902), (4, 197_281), (5, 4_865_609)];
+            run_perft_test(fen, &expected);
         }
+
         #[test]
         fn perft_test_2() {
-            let mut board: Board = Board::new(Some(
-                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
-            ));
-            assert_eq!(perft(&mut board, 1, 1, false), 48);
-            assert_eq!(perft(&mut board, 2, 2, false), 2039);
-            assert_eq!(perft(&mut board, 3, 3, false), 97_862);
-            assert_eq!(perft(&mut board, 4, 4, false), 4_085_603);
-            assert_eq!(perft(&mut board, 5, 5, false), 193_690_690);
+            let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
+            let expected = vec![
+                (1, 48),
+                (2, 2039),
+                (3, 97_862),
+                (4, 4_085_603),
+                (5, 193_690_690),
+            ];
+            run_perft_test(fen, &expected);
         }
+
         #[test]
         fn perft_test_3() {
-            let mut board: Board = Board::new(Some("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -  "));
-            assert_eq!(perft(&mut board, 1, 1, false), 14);
-            assert_eq!(perft(&mut board, 2, 2, false), 191);
-            assert_eq!(perft(&mut board, 3, 3, false), 2812);
-            assert_eq!(perft(&mut board, 4, 4, false), 43_238);
-            assert_eq!(perft(&mut board, 5, 5, false), 746_624);
+            let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -  ";
+            let expected = vec![(1, 14), (2, 191), (3, 2812), (4, 43_238), (5, 746_624)];
+            run_perft_test(fen, &expected);
         }
+
         #[test]
         fn perft_test_4() {
-            let mut board: Board = Board::new(Some(
-                "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-            ));
-
-            assert_eq!(perft(&mut board, 1, 1, false), 6);
-            assert_eq!(perft(&mut board, 2, 2, false), 264);
-            assert_eq!(perft(&mut board, 3, 3, false), 9467);
-            assert_eq!(perft(&mut board, 4, 4, false), 422_333);
-            assert_eq!(perft(&mut board, 5, 5, false), 15_833_292);
+            let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+            let expected = vec![(1, 6), (2, 264), (3, 9467), (4, 422_333), (5, 15_833_292)];
+            run_perft_test(fen, &expected);
         }
+
         #[test]
         fn perft_test_5() {
-            let mut board: Board = Board::new(Some(
-                " rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  ",
-            ));
-            assert_eq!(perft(&mut board, 1, 1, false), 44);
-            assert_eq!(perft(&mut board, 2, 2, false), 1486);
-            assert_eq!(perft(&mut board, 3, 3, false), 62_379);
-            assert_eq!(perft(&mut board, 4, 4, false), 2_103_487);
-            assert_eq!(perft(&mut board, 5, 5, false), 89_941_194);
+            let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  ";
+            let expected = vec![
+                (1, 44),
+                (2, 1486),
+                (3, 62_379),
+                (4, 2_103_487),
+                (5, 89_941_194),
+            ];
+            run_perft_test(fen, &expected);
         }
+
         #[test]
         fn perft_test_6() {
-            let mut board: Board = Board::new(Some(
-                "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
-            ));
-            assert_eq!(perft(&mut board, 1, 1, false), 46);
-            assert_eq!(perft(&mut board, 2, 2, false), 2097);
-            assert_eq!(perft(&mut board, 3, 3, false), 89_890);
-            assert_eq!(perft(&mut board, 4, 4, false), 3_894_594);
-            assert_eq!(perft(&mut board, 5, 5, false), 164_076_551);
+            let fen = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10";
+            let expected = vec![
+                (1, 46),
+                (2, 2097),
+                (3, 89_890),
+                (4, 3_894_594),
+                (5, 164_076_551),
+            ];
+            run_perft_test(fen, &expected);
         }
     }
 }
