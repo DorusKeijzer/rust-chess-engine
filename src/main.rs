@@ -106,17 +106,21 @@ impl ChessEngine {
         // there is a last move, make that move
         if let Some(m) = lastmove {
             let chess_move = algebraic_to_move(&self.board, m);
+            println!("Performed move {}", chess_move);
             make_move(&mut self.board, &chess_move, true);
         }
         self.board.draw();
+        self.board.print_state();
     }
 
     fn find_best_move(&mut self, _command: &str) -> String {
         // Parse the go command, search for the best move, and return it
         //
         let moves = legalmoves::generate_legal_moves(&mut self.board);
-
+        println!("meeko found best move: {}", moves[1]);
         make_move(&mut self.board, &moves[1], true);
+        self.board.draw();
+        self.board.print_state();
         moves[1].alg_move()
     }
 
@@ -130,7 +134,6 @@ impl ChessEngine {
         let mut registerfen = false;
         let mut fen = String::new();
         while let Some(current) = deque.pop_front() {
-            println!("{}", current);
             if registerfen {
                 fen.push_str(current);
                 fen.push(' ');
@@ -186,7 +189,9 @@ fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
         Some(5) => Some(Piece::Bishop),
         _ => None,
     };
-
+    if let Some(c) = captured {
+        println!("captured: {} at {}", c, to);
+    }
     let castled = piece == Piece::King && (from == 4 && (to == 6 || to == 2))
         || (from == 60 && (to == 62 || to == 58));
 
@@ -196,7 +201,7 @@ fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
         piece,
         promotion,
         captured,
-        castled: false,
+        castled,
     }
 }
 

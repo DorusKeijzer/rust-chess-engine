@@ -1,5 +1,6 @@
 use crate::{
     board::{self, Board, State, Turn},
+    legalmoves,
     utils::{self, algebraic_to_square, draw_bb, find_bitboard, square_to_algebraic, BitIter},
 };
 use core::num;
@@ -1022,6 +1023,10 @@ fn is_double_pawn_move(from: u8, to: u8, color: Turn) -> bool {
 
 pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
     let mut new_state = board.current_state.clone();
+    println!("castled: {}", chess_move.castled);
+    println!("from: {}", chess_move.from);
+    println!("to: {}", chess_move.to);
+
     if chess_move.castled
     // in case of castling, move the king too
     {
@@ -1034,7 +1039,6 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
         }; // remove all castling rights for this player
     }
     remove_castling_rights(chess_move, &mut new_state);
-    let p = new_state.castling_rights;
     let bb_index = bitboard_from_piece_and_board(board, chess_move.piece);
 
     // if a piece is captured, find the corresponding bitboard and remove the piece there
@@ -1055,9 +1059,12 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
             }
             None => chess_move.to, // find the piece corresponding to the board
         };
+        println!("captured index {}", captured_index);
         board.bitboards[captured_bb as usize] ^= utils::mask(captured_index);
     }
-
+    println!("bb index: {}", bb_index);
+    legalmoves::draw_bb(utils::mask(chess_move.to));
+    legalmoves::draw_bb(utils::mask(chess_move.from));
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
     board.bitboards[bb_index] ^= utils::mask(chess_move.from);
 
