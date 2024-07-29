@@ -1,5 +1,3 @@
-#![allow(dead_code, unused_parens, unused_variables, unused_imports)]
-
 mod board; // keeps track of the board
 mod legalmoves;
 mod utils; // utility functions // legal move generation
@@ -96,17 +94,23 @@ impl ChessEngine {
         // Parse the position command and set up the board
         if !self.starting_pos_set {
             match command {
-                "position startpos" => {
+                _ if command.starts_with("position startpos") => {
                     self.board = Board::new(Some(
                         "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                    ))
+                    ));
+                    self.starting_pos_set = true;
                 }
-                _ if command.starts_with("position ") => self.board = Board::new(Some(command)),
+                _ if command.starts_with("position fen ") => {
+                    let fen = command.strip_prefix("position fen ").unwrap_or(command);
+                    self.board = Board::new(Some(fen));
+                }
+                // split up fen
                 _ => println!("unknown command"),
             };
         } else {
             let inputs = command.split(" ");
-            // algebraic to move.. .
+            let chess_move = algebraic_to_move(&self.board, inputs.last().unwrap());
+            make_move(&mut self.board, &chess_move, true);
         }
     }
 
@@ -115,6 +119,50 @@ impl ChessEngine {
         //
         let moves = legalmoves::generate_legal_moves(&mut self.board);
         moves[1].alg_move()
+    }
+}
+
+fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
+    let from = algebraic_to_square(&algebraic_string[0..2]).unwrap();
+    let to = algebraic_to_square(&algebraic_string[2..4]).unwrap();
+
+    let promotion = match &algebraic_string.chars().nth(4) {
+        Some('q') => Some(Piece::Queen),
+        Some('r') => Some(Piece::Rook),
+        Some('b') => Some(Piece::Bishop),
+        Some('n') => Some(Piece::Knight),
+        Some(_) => None,
+        None => None,
+    };
+    let piece = match find_bitboard(&board, from).map(|x| x % 6) {
+        Some(0) => Piece::Pawn,
+        Some(1) => Piece::Rook,
+        Some(2) => Piece::King,
+        Some(3) => Piece::Knight,
+        Some(4) => Piece::Queen,
+        Some(5) => Piece::Bishop,
+        _ => panic!(),
+    };
+    let captured = match find_bitboard(&board, to).map(|x| x % 6) {
+        Some(0) => Some(Piece::Pawn),
+        Some(1) => Some(Piece::Rook),
+        Some(2) => Some(Piece::King),
+        Some(3) => Some(Piece::Knight),
+        Some(4) => Some(Piece::Queen),
+        Some(5) => Some(Piece::Bishop),
+        _ => None,
+    };
+
+    let castled = piece == Piece::King && (from == 4 && (to == 6 || to == 2))
+        || (from == 60 && (to == 62 || to == 58));
+
+    Move {
+        from,
+        to,
+        piece,
+        promotion,
+        captured,
+        castled: false,
     }
 }
 
