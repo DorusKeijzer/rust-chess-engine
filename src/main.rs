@@ -2,16 +2,15 @@ mod board; // keeps track of the board
 mod legalmoves;
 mod utils; // utility functions // legal move generation
 use std::env;
-use std::fs::Permissions;
 
 use crate::{
     board::{Board, State, Turn},
     legalmoves::{Move, Piece},
     utils::{draw_bb, find_bitboard, BitIter},
 };
-use legalmoves::unmake_move;
 use legalmoves::{format_for_debug, make_move, perft};
 use legalmoves::{generate_legal_moves, rook_attacks};
+use std::collections::VecDeque;
 use utils::{algebraic_to_square, square_to_algebraic};
 
 /// TODO prio order:
@@ -90,35 +89,70 @@ impl ChessEngine {
         ));
         self.starting_pos_set = false;
     }
-    fn set_position(&mut self, command: &str) {
+    fn set_position<'a>(&'a mut self, command: &'a str) {
         // Parse the position command and set up the board
+        let (fen, lastmove) = self.parse_position(command);
+
+        // ignore fen if already set
         if !self.starting_pos_set {
-            match command {
-                _ if command.starts_with("position startpos") => {
-                    self.board = Board::new(Some(
-                        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                    ));
-                    self.starting_pos_set = true;
-                }
-                _ if command.starts_with("position fen ") => {
-                    let fen = command.strip_prefix("position fen ").unwrap_or(command);
-                    self.board = Board::new(Some(fen));
-                }
-                // split up fen
-                _ => println!("unknown command"),
+            self.board = match fen.as_str() {
+                "startpos" => Board::new(Some(
+                    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                )),
+                _ => Board::new(Some(&fen)),
             };
-        } else {
-            let inputs = command.split(" ");
-            let chess_move = algebraic_to_move(&self.board, inputs.last().unwrap());
+            self.starting_pos_set = true;
+        }
+        // there is a last move, make that move
+        if let Some(m) = lastmove {
+            let chess_move = algebraic_to_move(&self.board, m);
             make_move(&mut self.board, &chess_move, true);
         }
+        self.board.draw();
     }
 
-    fn find_best_move(&mut self, command: &str) -> String {
+    fn find_best_move(&mut self, _command: &str) -> String {
         // Parse the go command, search for the best move, and return it
         //
         let moves = legalmoves::generate_legal_moves(&mut self.board);
+
+        make_move(&mut self.board, &moves[1], true);
         moves[1].alg_move()
+    }
+
+    /// parses a string such as "position fen bla bla bla moves a1a2"
+    /// returns the fen string and the last performed move
+    fn parse_position<'a>(&mut self, command: &'a str) -> (String, Option<&'a str>) {
+        // splits command at every whitespace and turns into a double queue
+        let words: Vec<&str> = command.split_whitespace().collect();
+        let mut deque: VecDeque<&str> = VecDeque::from(words);
+        // logic for separating fen from moves
+        let mut registerfen = false;
+        let mut fen = String::new();
+        while let Some(current) = deque.pop_front() {
+            println!("{}", current);
+            if registerfen {
+                fen.push_str(current);
+                fen.push(' ');
+            }
+            match current {
+                // after word fen, start registering every command as part of fen string
+                // until encountering "moves"
+                "startpos" => {
+                    fen = current.to_string();
+                    break;
+                }
+                "fen" => {
+                    registerfen = true;
+                }
+                "moves" => {
+                    break;
+                }
+                _ => {}
+            };
+        }
+        let lastmove = deque.pop_back();
+        (fen, lastmove)
     }
 }
 
