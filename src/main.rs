@@ -1,19 +1,21 @@
 #![allow(dead_code, unused_parens, unused_variables, unused_imports)]
 
 mod board; // keeps track of the board
+mod engine;
 mod legalmoves;
 mod utils; // utility functions // legal move generation
+
 use std::env;
 
 use crate::{
     board::{Board, State, Turn},
-    legalmoves::{Move, Piece},
-    utils::{draw_bb, find_bitboard, BitIter},
+    engine::ChessEngine,
+    legalmoves::{
+        format_for_debug, generate_legal_moves, make_move, perft, rook_attacks, unmake_move, Move,
+        Piece,
+    },
+    utils::{algebraic_to_square, draw_bb, find_bitboard, square_to_algebraic, BitIter},
 };
-use legalmoves::{format_for_debug, make_move, perft, unmake_move};
-use legalmoves::{generate_legal_moves, rook_attacks};
-use std::collections::VecDeque;
-use utils::{algebraic_to_square, square_to_algebraic};
 
 /// TODO prio order:
 /// Debug EP:
@@ -66,98 +68,6 @@ fn temp_main() {
             }
             _ => println!("Unknown command: {}", input),
         }
-    }
-}
-
-struct ChessEngine {
-    board: Board,           // Add fields as needed
-    starting_pos_set: bool, // whether the starting position is set to prevent backtracking
-}
-
-impl ChessEngine {
-    fn new() -> Self {
-        let board = Board::new(None);
-        let starting_pos_set = false;
-        // Initialize your engine
-        ChessEngine {
-            board,
-            starting_pos_set,
-        }
-    }
-
-    fn new_game(&mut self) {
-        self.board = Board::new(Some(
-            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-        ));
-        self.starting_pos_set = false;
-    }
-    fn set_position<'a>(&'a mut self, command: &'a str) {
-        // Parse the position command and set up the board
-        let (fen, lastmove) = self.parse_position(command);
-
-        // ignore fen if already set
-        if !self.starting_pos_set {
-            self.board = match fen.as_str() {
-                "startpos" => Board::new(Some(
-                    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                )),
-                _ => Board::new(Some(&fen)),
-            };
-            self.starting_pos_set = true;
-        }
-        // there is a last move, make that move
-        if let Some(m) = lastmove {
-            let chess_move = algebraic_to_move(&self.board, m);
-            println!("Performed move {}", chess_move);
-            make_move(&mut self.board, &chess_move, true);
-        }
-        self.board.draw();
-        self.board.print_state();
-    }
-
-    fn find_best_move(&mut self, _command: &str) -> String {
-        // Parse the go command, search for the best move, and return it
-        //
-        let moves = legalmoves::generate_legal_moves(&mut self.board);
-        println!("meeko found best move: {}", moves[1]);
-        make_move(&mut self.board, &moves[1], true);
-        self.board.draw();
-        self.board.print_state();
-        moves[1].alg_move()
-    }
-
-    /// parses a string such as "position fen bla bla bla moves a1a2"
-    /// returns the fen string and the last performed move
-    fn parse_position<'a>(&mut self, command: &'a str) -> (String, Option<&'a str>) {
-        // splits command at every whitespace and turns into a double queue
-        let words: Vec<&str> = command.split_whitespace().collect();
-        let mut deque: VecDeque<&str> = VecDeque::from(words);
-        // logic for separating fen from moves
-        let mut registerfen = false;
-        let mut fen = String::new();
-        while let Some(current) = deque.pop_front() {
-            if registerfen {
-                fen.push_str(current);
-                fen.push(' ');
-            }
-            match current {
-                // after word fen, start registering every command as part of fen string
-                // until encountering "moves"
-                "startpos" => {
-                    fen = current.to_string();
-                    break;
-                }
-                "fen" => {
-                    registerfen = true;
-                }
-                "moves" => {
-                    break;
-                }
-                _ => {}
-            };
-        }
-        let lastmove = deque.pop_back();
-        (fen, lastmove)
     }
 }
 
