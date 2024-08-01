@@ -1,7 +1,12 @@
+#![allow(dead_code, unused_parens, unused_variables, unused_imports)]
+
 use crate::{
     board::{self, Board, State, Turn},
     legalmoves,
-    utils::{self, algebraic_to_square, draw_bb, find_bitboard, square_to_algebraic, BitIter},
+    utils::{
+        self, algebraic_to_square, count_pieces, draw_bb, find_bitboard, square_to_algebraic,
+        BitIter,
+    },
 };
 use core::num;
 use lazy_static::lazy_static;
@@ -49,7 +54,7 @@ pub fn format_for_debug(mut board: Board, depth: i32) {
         let alg_move = alg_move(&m);
         make_move(&mut board, &m, true);
         let perft_score = perft(&mut board, depth - 1, depth - 1, false);
-        println!("{} {}", alg_move, perft_score);
+        println!("{}: {}", alg_move, perft_score);
         unmake_move(&mut board, &m, true);
     }
     println!("\n{}", total);
@@ -75,10 +80,10 @@ fn alg_move(chess_move: &Move) -> String {
         }
     }
     let promotion = match chess_move.promotion {
-        Some(Piece::Rook) => "R".to_string(),
-        Some(Piece::Queen) => "Q".to_string(),
-        Some(Piece::Knight) => "N".to_string(),
-        Some(Piece::Bishop) => "B".to_string(),
+        Some(Piece::Rook) => "r".to_string(),
+        Some(Piece::Queen) => "q".to_string(),
+        Some(Piece::Knight) => "n".to_string(),
+        Some(Piece::Bishop) => "b".to_string(),
         _ => "".to_string(),
     };
 
@@ -270,15 +275,22 @@ fn legal_moves(board: &mut Board, piece: Piece) -> Vec<Move> {
     let mut result = vec![];
     // makes move and if king not in check, push to results
     for chess_move in moves {
+        println!("{} pieces before making move.", count_pieces(board));
         make_move(board, &chess_move, false); // don't update state so we won't run check() for the wrong color
                                               // println!("{} - check: {}", chess_move, check(board));
                                               //println!("draw:");
                                               // board.draw();
+        println!("examining {}", chess_move);
+        println!("{} pieces after making move.", count_pieces(board));
+        board.draw();
+        board.print_state();
+
         if !check(board) {
             result.push(chess_move)
         }
 
         unmake_move(board, &chess_move, false); // update_state is false for the same reasons
+        println!("{} pieces after undoing.", count_pieces(board))
     }
 
     return result;
@@ -325,6 +337,8 @@ fn check(board: &mut Board) -> bool {
     // king:  blacks king if black to move
     // offset:  white pieces if black to move
     // own: blacks pieces if black to move
+    //
+
     let (king, offset, own) = match board.current_state.turn {
         Turn::Black => (board.bitboards[8], 0, board.all_black()),
         Turn::White => (board.bitboards[2], 6, board.all_white()),
@@ -520,13 +534,14 @@ fn pseudo_legal_to_moves(board: &Board, bitboard: u64, from_square: u8, piece: P
     for to_square in BitIter(bitboard) {
         let captured_bb = find_bitboard(board, to_square as u8);
         let mut captured_piece = None;
-
+        let mut en_passant_capture = false;
         if let Some(bb_index) = captured_bb {
             captured_piece = piece_from_square(bb_index as u8);
         }
         if let Some(en_passant_square) = board.current_state.en_passant {
             if piece == Piece::Pawn && en_passant_square == to_square as u8 {
                 captured_piece = Some(Piece::Pawn);
+                en_passant_capture = true;
             }
         }
         // promotion logic: in the case that a pawn piece is on the opposite row, add all possible promotions to legal moves.
@@ -545,6 +560,7 @@ fn pseudo_legal_to_moves(board: &Board, bitboard: u64, from_square: u8, piece: P
                         promotion: Some(promotion_piece),
                         captured: captured_piece,
                         castled: false,
+                        en_passant_capture,
                     })
                 }
             }
@@ -557,6 +573,7 @@ fn pseudo_legal_to_moves(board: &Board, bitboard: u64, from_square: u8, piece: P
                 promotion: None,
                 captured: captured_piece,
                 castled: false,
+                en_passant_capture,
             })
         }
     }
@@ -571,6 +588,7 @@ pub struct Move {
     pub promotion: Option<Piece>, // Optional promotion piece
     pub captured: Option<Piece>,  // Optional captured piece
     pub castled: bool, // whether castling happened in this turn (responsible for moving king)
+    pub en_passant_capture: bool,
 }
 
 impl Move {
@@ -633,13 +651,13 @@ impl fmt::Display for Move {
             ""
         };
 
-        //write!(
-        //    f,
+        // write!(
+        //     f,
         //    "{} from {} to {}",
         //    self.piece,
-        //    utils::square_to_algebraic(&self.from),
-        //    utils::square_to_algebraic(&self.to),
-        //)
+        //     utils::square_to_algebraic(&self.from),
+        //     utils::square_to_algebraic(&self.to),
+        // )
         write!(
             f,
             "{} from {} to {} {}{}",
@@ -761,6 +779,7 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
                 promotion: None,
                 captured: None,
                 castled: true,
+                en_passant_capture: false,
             },
         ),
         (
@@ -786,6 +805,7 @@ pub fn castling(occupied: u64, board: &Board) -> Vec<Move> {
                 promotion: None,
                 captured: None,
                 castled: true,
+                en_passant_capture: false,
             },
         ),
     ];
@@ -815,6 +835,7 @@ pub fn reconstruct_king_move(rook_move: &Move, board: &Board) -> (Move, u8) {
         captured: None,
         promotion: None,
         castled: false, // false allows for recursiive function call in (un)make_move()
+        en_passant_capture: false,
     };
     // permission relevant to this castling so we can update the state
     let mut permission_update = 0;
@@ -973,6 +994,7 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 
     // Undoes a captured piece
     if let Some(captured_piece) = chess_move.captured {
+        println!("captured piece: {:?}", chess_move.captured.unwrap());
         if let Some(ep_square) = board.current_state.en_passant {
             // in case of en passant capture
             if board.current_state.turn == Turn::White {
@@ -1023,9 +1045,6 @@ fn is_double_pawn_move(from: u8, to: u8, color: Turn) -> bool {
 
 pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
     let mut new_state = board.current_state.clone();
-    println!("castled: {}", chess_move.castled);
-    println!("from: {}", chess_move.from);
-    println!("to: {}", chess_move.to);
 
     if chess_move.castled
     // in case of castling, move the king too
@@ -1049,22 +1068,24 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
             Turn::White
         };
         let captured_bb: usize = bitboard_from_piece_and_color(&opposite_color, captured_piece);
-        let captured_index = match board.current_state.en_passant {
-            Some(square) => {
-                // in case of en passant capture
-                match board.current_state.turn {
-                    Turn::Black => square - 8, // the piece one row before the e.p. square
-                    Turn::White => square + 8, // the piece one row behind the e.p. square
+
+        let captured_index = if chess_move.en_passant_capture {
+            match board.current_state.en_passant {
+                Some(square) => {
+                    // in case of en passant capture
+                    match board.current_state.turn {
+                        Turn::Black => square - 8, // the piece one row before the e.p. square
+                        Turn::White => square + 8, // the piece one row behind the e.p. square
+                    }
                 }
+                None => chess_move.to, // find the piece corresponding to the board
             }
-            None => chess_move.to, // find the piece corresponding to the board
+        } else {
+            chess_move.to
         };
-        println!("captured index {}", captured_index);
+
         board.bitboards[captured_bb as usize] ^= utils::mask(captured_index);
     }
-    println!("bb index: {}", bb_index);
-    legalmoves::draw_bb(utils::mask(chess_move.to));
-    legalmoves::draw_bb(utils::mask(chess_move.from));
     board.bitboards[bb_index] ^= utils::mask(chess_move.to);
     board.bitboards[bb_index] ^= utils::mask(chess_move.from);
 
@@ -1102,8 +1123,8 @@ pub fn make_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 /// Returns:
 /// - The number of possible moves at the specified depth.
 pub fn perft(board: &mut Board, depth: i32, startdepth: i32, verbose: bool) -> i32 {
-    if depth == 1 {
-        return generate_legal_moves(board).len() as i32;
+    if depth == 0 {
+        return 1;
     }
 
     let moves = generate_legal_moves(board);

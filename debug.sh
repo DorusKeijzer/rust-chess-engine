@@ -5,7 +5,7 @@ if [ $# -lt 2 ]; then
     echo "Usage: ./debug.sh <depth> <fen> [moves]"
     exit 1
 fi
-echo "Debug: Received args: $@" >&2
+# echo "Debug: Received args: $@" >&2
 # build most recent chess engine
 cargo build --release -q
 

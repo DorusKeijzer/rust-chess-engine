@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_parens, unused_variables, unused_imports)]
+
 mod board; // keeps track of the board
 mod legalmoves;
 mod utils; // utility functions // legal move generation
@@ -8,7 +10,7 @@ use crate::{
     legalmoves::{Move, Piece},
     utils::{draw_bb, find_bitboard, BitIter},
 };
-use legalmoves::{format_for_debug, make_move, perft};
+use legalmoves::{format_for_debug, make_move, perft, unmake_move};
 use legalmoves::{generate_legal_moves, rook_attacks};
 use std::collections::VecDeque;
 use utils::{algebraic_to_square, square_to_algebraic};
@@ -33,7 +35,7 @@ use utils::{algebraic_to_square, square_to_algebraic};
 /// Opening books
 use std::io::{self, BufRead, Write};
 
-fn main() {
+fn temp_main() {
     let mut engine = ChessEngine::new(); // You'll need to implement this
 
     let stdin = io::stdin();
@@ -50,7 +52,7 @@ fn main() {
         match input {
             "uci" => {
                 println!("id name Meeko");
-                println!("id author YourName");
+                println!("id author Dorus");
                 // Add any options here
                 println!("uciok");
             }
@@ -194,7 +196,24 @@ fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
     }
     let castled = piece == Piece::King && (from == 4 && (to == 6 || to == 2))
         || (from == 60 && (to == 62 || to == 58));
+    let en_passant_capture = if piece == Piece::Pawn {
+        let file_diff = (to % 8) as i8 - (from % 8) as i8;
+        let rank_diff = (to / 8) as i8 - (from / 8) as i8;
 
+        if file_diff.abs() == 1 && rank_diff.abs() == 1 && captured.is_none() {
+            // The move is diagonal and there's no piece on the destination square
+            let ep_square = if board.current_state.turn == Turn::White {
+                to - 8 // The square behind the captured pawn for White
+            } else {
+                to + 8 // The square behind the captured pawn for Black
+            };
+            board.current_state.en_passant == Some(ep_square)
+        } else {
+            false
+        }
+    } else {
+        false
+    };
     Move {
         from,
         to,
@@ -202,10 +221,11 @@ fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
         promotion,
         captured,
         castled,
+        en_passant_capture, // fix this
     }
 }
 
-fn old_main() {
+fn main() {
     // Get the argument from the command line
     let args: Vec<String> = env::args().collect();
     if args.len() == 0 {}
@@ -216,31 +236,42 @@ fn old_main() {
     let mode = &args[1];
     let fen = &args[2];
 
-    let mut board = Board::new(Some(fen));
     match mode.as_str() {
         "default" => {
             let mut board = Board::new(Some(
-                "r3k2r/p1ppqpb1/Bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPB1PPP/R3K2R w KQkq - ",
+                "8/8/3p4/KPp4r/R4p1k/8/4P1P1/8 w - c6 0 2 1
+",
             ));
             board.draw();
             let legalmoves = generate_legal_moves(&mut board);
-            utils::draw_bb(legalmoves::attacks(&board, Turn::Black))
+
+            for l in legalmoves.clone() {
+                println!("{}", l);
+            }
+            println!("{}", legalmoves.len());
         }
+
         "script" => {
+            let mut board = Board::new(Some(fen));
             let p: i32 = perft(&mut board, 1, 1, true);
             println!("{p}");
         }
         "quiet" => {
+            let mut board = Board::new(Some(fen));
             let depth: i32 = args[3].parse().unwrap();
             let p: i32 = perft(&mut board, depth, depth, false);
             println!("{p}");
         }
-        "draw" => board.draw(),
+        "draw" => {
+            let board = Board::new(Some(fen));
+            board.draw()
+        }
         "debug" => {
+            let board = Board::new(Some(fen));
             let depth: i32 = args[3].parse().unwrap();
-            assert!(depth > 1, "Depth must be greater than 1");
             format_for_debug(board, depth);
         }
+
         _ => {
             println!("Not a valid mode :^)")
         }
@@ -270,6 +301,33 @@ mod tests {
 
             assert_eq!(legalmoves.len(), 6, "6 possible moves to get out of check");
         }
+
+        #[test]
+        fn undo_counts() {
+            let mut board = Board::new(Some("8/8/3p4/KPp4r/R4p1k/8/4P1P1/8 w - c6 0 2 1"));
+
+            board.draw();
+            board.print_state();
+            let m = Move {
+                from: 32,
+                to: 37,
+                piece: Piece::Rook,
+                promotion: None,
+                castled: false,
+                en_passant_capture: false,
+                captured: Some(Piece::Pawn),
+            };
+
+            let before_count = utils::count_pieces(&board);
+
+            make_move(&mut board, &m, true);
+
+            let after_count = utils::count_pieces(&board);
+            assert_eq!(
+                before_count, after_count,
+                "count before and after unmaking are not the same."
+            )
+        }
     }
     mod castling {
         use super::*;
@@ -283,6 +341,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: true,
+                en_passant_capture: false,
             };
             board.draw();
             let moves = legalmoves::generate_legal_moves(&mut board);
@@ -305,6 +364,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: true,
+                en_passant_capture: false,
             };
             board.draw();
             let moves = legalmoves::generate_legal_moves(&mut board);
@@ -327,6 +387,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: true,
+                en_passant_capture: false,
             };
             board.draw();
             let moves = legalmoves::generate_legal_moves(&mut board);
@@ -349,6 +410,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: true,
+                en_passant_capture: false,
             };
             board.draw();
             let moves = legalmoves::generate_legal_moves(&mut board);
@@ -371,6 +433,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: true,
+                en_passant_capture: false,
             };
             println!("AAAAAAAAA");
             board.draw();
@@ -394,6 +457,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: true,
+                en_passant_capture: false,
             };
 
             println!("BBBBBBBBB");
@@ -415,6 +479,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: true,
+                en_passant_capture: false,
             };
             let moves = legalmoves::generate_legal_moves(&mut board);
 
@@ -432,6 +497,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: false,
+                en_passant_capture: false,
             };
 
             legalmoves::make_move(&mut board, &king_move, true);
@@ -451,6 +517,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: false,
+                en_passant_capture: false,
             };
             make_move(&mut board, &rook_move, true);
             assert_eq!(board.current_state.castling_rights & 0b1000, 0b0000); // White lost kingside castling right
@@ -468,8 +535,8 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: true,
+                en_passant_capture: false,
             };
-
             make_move(&mut board, &rook_move, true);
 
             assert_eq!(board.current_state.castling_rights & 0b1100, 0b0000); // White lost all castling rights
@@ -487,6 +554,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: true,
+                en_passant_capture: false,
             };
 
             let (king_move, _) = legalmoves::reconstruct_king_move(&rook_move, &board);
@@ -511,6 +579,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: true,
+                en_passant_capture: false,
             };
 
             let (king_move, _) = legalmoves::reconstruct_king_move(&rook_move, &board);
@@ -551,6 +620,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: false,
             };
 
             let moves = generate_legal_moves(&mut board);
@@ -566,6 +636,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: false,
             };
             make_move(&mut board, &pawn_capture, true);
             assert_ne!(board.bitboards[0], 0);
@@ -581,6 +652,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: false,
             };
             board.draw();
             make_move(&mut board, &pawn_capture, true);
@@ -606,6 +678,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: false,
             };
             let pawn_capture_2 = Move {
                 from: algebraic_to_square("d4").unwrap(),
@@ -613,6 +686,7 @@ mod tests {
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
                 promotion: None,
+                en_passant_capture: false,
                 castled: false,
             };
             board.draw();
@@ -632,6 +706,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: false,
             };
 
             let moves = generate_legal_moves(&mut board);
@@ -648,6 +723,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: false,
             };
 
             let pawn_capture_2 = Move {
@@ -657,6 +733,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: false,
             };
 
             let moves = generate_legal_moves(&mut board);
@@ -688,6 +765,7 @@ mod tests {
                 captured: None,
                 promotion: Some(Piece::Queen),
                 castled: false,
+                en_passant_capture: false,
             };
             make_move(&mut board, &promotion_move, true);
             // Assert board state after promotion
@@ -713,6 +791,7 @@ mod tests {
                 captured: None,
                 promotion: Some(Piece::Queen),
                 castled: false,
+                en_passant_capture: false,
             };
             make_move(&mut board, &promotion_move, true);
             // Assert board state after promotion
@@ -747,6 +826,7 @@ mod tests {
                 captured: None,
                 promotion: Some(Piece::Queen),
                 castled: false,
+                en_passant_capture: false,
             };
             make_move(&mut board, &promotion_move, true);
             // Assert board state after promotion
@@ -772,6 +852,7 @@ mod tests {
                 captured: None,
                 promotion: Some(Piece::Bishop),
                 castled: false,
+                en_passant_capture: false,
             };
             make_move(&mut board, &promotion_move, true);
             // Assert board state after promotion
@@ -810,6 +891,7 @@ mod tests {
                 captured: Some(Piece::Pawn), // Capturing the pawn en passant
                 promotion: None,
                 castled: false,
+                en_passant_capture: true,
             };
             make_move(&mut board, &en_passant_move, true);
             // Assert board state after en passant capture
@@ -830,6 +912,7 @@ mod tests {
                 captured: Some(Piece::Pawn), // Capturing the pawn en passant
                 promotion: None,
                 castled: false,
+                en_passant_capture: true,
             };
             make_move(&mut board, &en_passant_move, true);
             unmake_move(&mut board, &en_passant_move, true);
@@ -855,6 +938,7 @@ mod tests {
                 captured: Some(Piece::Pawn), // Capturing the pawn en passant
                 promotion: None,
                 castled: false,
+                en_passant_capture: true,
             };
             make_move(&mut board, &en_passant_move, true);
 
@@ -876,6 +960,7 @@ mod tests {
                 captured: Some(Piece::Pawn), // Capturing the pawn en passant
                 promotion: None,
                 castled: false,
+                en_passant_capture: true,
             };
             make_move(&mut board, &en_passant_move, true);
             unmake_move(&mut board, &en_passant_move, true);
@@ -902,6 +987,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: true,
             };
             let moves = legalmoves::generate_legal_moves(&mut board);
             assert!(
@@ -922,6 +1008,7 @@ mod tests {
                 piece: Piece::Pawn,
                 captured: Some(Piece::Pawn),
                 promotion: None,
+                en_passant_capture: true,
                 castled: false,
             };
             let moves = legalmoves::generate_legal_moves(&mut board);
@@ -944,8 +1031,9 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
-            };
 
+                en_passant_capture: true,
+            };
             assert!(
                 moves.contains(&en_passant_move),
                 "En passant move not generated for black."
@@ -963,6 +1051,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: true,
             };
             assert!(
                 moves.contains(&en_passant_move),
@@ -981,6 +1070,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: true,
             };
             assert!(
                 moves.contains(&en_passant_move),
@@ -999,6 +1089,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: false,
+                en_passant_capture: true,
             };
             make_move(&mut board, &non_ep_move, true);
 
@@ -1010,6 +1101,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: true,
             };
             assert!(
                 !black_moves.contains(&invalid_ep_move),
@@ -1027,6 +1119,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: true,
             };
             board.draw();
             make_move(&mut board, &ep_move, true);
@@ -1062,6 +1155,7 @@ mod tests {
                 captured: None,
                 promotion: None,
                 castled: false,
+                en_passant_capture: false,
             };
 
             make_move(&mut board, &pawn_move, true);
@@ -1085,6 +1179,7 @@ mod tests {
                 captured: Some(Piece::Pawn),
                 promotion: None,
                 castled: false,
+                en_passant_capture: true,
             };
 
             for m in moves.clone() {
@@ -1179,7 +1274,7 @@ mod tests {
             let fen = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10";
             let expected = vec![
                 (1, 46),
-                (2, 2097),
+                (2, 2079),
                 (3, 89_890),
                 (4, 3_894_594),
                 (5, 164_076_551),

@@ -23,6 +23,16 @@ pub fn bitset(bb: &u64, index: u8) -> bool {
     mask(index) & bb != 0
 }
 
+pub fn count_pieces(board: &Board) -> i32 {
+    let mut result = 0;
+    for i in 0..12 {
+        for bit in BitIter(board.bitboards[i]) {
+            result += 1;
+        }
+    }
+    result
+}
+
 /// Generates a bitboard with a single bit set at the specified index.
 ///
 /// # Arguments
@@ -105,7 +115,7 @@ impl Iterator for BitIter {
     }
 }
 
-pub fn square_to_algebraic(square:& u8) -> String {
+pub fn square_to_algebraic(square: &u8) -> String {
     let file = (square % 8) as u8 + b'a';
     let rank = (7 - (square / 8)) as u8 + b'1';
     format!("{}{}", file as char, rank as char)
@@ -122,7 +132,7 @@ pub fn algebraic_to_square(algebraic: &str) -> Option<u8> {
     let rank = chars[1] as u8 - b'1'; // Convert '1'-'8' to 0-7
 
     // Calculate the square index
-    let square_index = file + 8 * (7-rank);
+    let square_index = file + 8 * (7 - rank);
 
     Some(square_index)
 }
@@ -199,7 +209,7 @@ mod tests {
                 0b0000_1000_0000_0000,
             ]),
             current_state: State::new(None),
-            state_history: vec![State::new(None)]
+            state_history: vec![State::new(None)],
         };
         assert_eq!(find_bitboard(&bitboards, 0), Some(0));
         assert_eq!(find_bitboard(&bitboards, 1), Some(1));
