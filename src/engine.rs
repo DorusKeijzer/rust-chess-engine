@@ -1,4 +1,5 @@
-use crate::{algebraic_to_move, board::Board, legalmoves, make_move, utils, BitIter, Turn};
+use crate::legalmoves::generate_legal_moves;
+use crate::{algebraic_to_move, board::Board, legalmoves, make_move, utils, BitIter, Move, Turn};
 use std::collections::HashMap;
 use std::collections::VecDeque;
 
@@ -69,7 +70,6 @@ impl ChessEngine {
         make_move(&mut self.board, &moves[1], true);
         self.board.draw();
         self.board.print_state();
-        moves[1].alg_move()
     }
 
     /// parses a string such as "position fen bla bla bla moves a1a2"
@@ -107,23 +107,40 @@ impl ChessEngine {
     }
 
     /// evaluates the current position on the board
-    fn evaluate(&self) -> i32 {
-        let mut white_value = 0;
-        for bb_index in 0..6 {
-            for bit in BitIter(self.board.bitboards[bb_index]) {
-                white_value += self.rel_value.get(&(bb_index as isize)).unwrap();
-            }
-        }
-        let mut black_value = 0;
-        for bb_index in 6..12 {
-            for bit in BitIter(self.board.bitboards[bb_index]) {
-                black_value += self.rel_value.get(&(bb_index as isize - 6)).unwrap();
-            }
+
+    fn minimax(&mut self, evaluation: fn(&board, &hashmap<isize, i32>) -> i32, depth: i32) -> i32 {
+        if depth == 0 {
+            return evaluation(&self.board, &self.rel_value);
         }
 
-        match self.color {
-            Turn::White => white_value - black_value,
-            Turn::Black => black_value - white_value,
+        let mut max_value = std::i32::min;
+        let moves = generate_legal_moves(&mut self.board);
+        for m in moves {
+            let score = -self.minimax(evaluation, depth - 1);
+
+            if score > max_value {
+                max_value = score;
+            }
         }
+        return max_value;
+    }
+}
+fn relative_value_evaluation(board: &Board, rel_value: &HashMap<isize, i32>) -> i32 {
+    let mut white_value = 0;
+    for bb_index in 0..6 {
+        for bit in BitIter(board.bitboards[bb_index]) {
+            white_value += rel_value.get(&(bb_index as isize)).unwrap();
+        }
+    }
+    let mut black_value = 0;
+    for bb_index in 6..12 {
+        for bit in BitIter(board.bitboards[bb_index]) {
+            black_value += rel_value.get(&(bb_index as isize - 6)).unwrap();
+        }
+    }
+
+    match board.current_state.turn {
+        Turn::White => white_value - black_value,
+        Turn::Black => black_value - white_value,
     }
 }
