@@ -275,22 +275,16 @@ fn legal_moves(board: &mut Board, piece: Piece) -> Vec<Move> {
     let mut result = vec![];
     // makes move and if king not in check, push to results
     for chess_move in moves {
-        println!("{} pieces before making move.", count_pieces(board));
         make_move(board, &chess_move, false); // don't update state so we won't run check() for the wrong color
                                               // println!("{} - check: {}", chess_move, check(board));
                                               //println!("draw:");
                                               // board.draw();
-        println!("examining {}", chess_move);
-        println!("{} pieces after making move.", count_pieces(board));
-        board.draw();
-        board.print_state();
 
         if !check(board) {
             result.push(chess_move)
         }
 
         unmake_move(board, &chess_move, false); // update_state is false for the same reasons
-        println!("{} pieces after undoing.", count_pieces(board))
     }
 
     return result;
@@ -994,18 +988,21 @@ pub fn unmake_move(board: &mut Board, chess_move: &Move, update_state: bool) {
 
     // Undoes a captured piece
     if let Some(captured_piece) = chess_move.captured {
-        println!("captured piece: {:?}", chess_move.captured.unwrap());
-        if let Some(ep_square) = board.current_state.en_passant {
-            // in case of en passant capture
-            if board.current_state.turn == Turn::White {
-                let captured_bb =
-                    bitboard_from_piece_and_color(&Turn::Black, chess_move.captured.unwrap());
-                board.bitboards[captured_bb] ^= utils::mask(ep_square) << 8; //  move back one row behind e.p. square
-            } else {
-                let captured_bb =
-                    bitboard_from_piece_and_color(&Turn::White, chess_move.captured.unwrap());
-                board.bitboards[captured_bb] ^= utils::mask(ep_square) >> 8; // move back one row behind e.p. square
-            };
+        if chess_move.en_passant_capture {
+            if let Some(ep_square) = board.current_state.en_passant {
+                // in case of en passant capture
+                if board.current_state.turn == Turn::White {
+                    let captured_bb =
+                        bitboard_from_piece_and_color(&Turn::Black, chess_move.captured.unwrap());
+                    board.bitboards[captured_bb] ^= utils::mask(ep_square) << 8;
+                //  move back one row behind e.p. square
+                } else {
+                    let captured_bb =
+                        bitboard_from_piece_and_color(&Turn::White, chess_move.captured.unwrap());
+                    board.bitboards[captured_bb] ^= utils::mask(ep_square) >> 8;
+                    // move back one row behind e.p. square
+                };
+            }
         } else {
             let opposite_color = if board.current_state.turn == Turn::White {
                 Turn::Black

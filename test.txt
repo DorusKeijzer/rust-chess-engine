@@ -1,0 +1,4 @@
+
+running 6 tests
+test tests::perft::perft_test_2 ... FAILED
+test tests::perft::perft_test_4 ... FAILED

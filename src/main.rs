@@ -305,7 +305,7 @@ mod tests {
         #[test]
         fn undo_counts() {
             let mut board = Board::new(Some("8/8/3p4/KPp4r/R4p1k/8/4P1P1/8 w - c6 0 2 1"));
-
+            println!("start");
             board.draw();
             board.print_state();
             let m = Move {
@@ -321,6 +321,13 @@ mod tests {
             let before_count = utils::count_pieces(&board);
 
             make_move(&mut board, &m, true);
+            println!("after move");
+            board.draw();
+            board.print_state();
+            unmake_move(&mut board, &m, true);
+            println!("after unmake move");
+            board.draw();
+            board.print_state();
 
             let after_count = utils::count_pieces(&board);
             assert_eq!(
@@ -1213,6 +1220,7 @@ mod tests {
             let mut board = Board::new(Some(fen));
             for (depth, expected) in expected_results {
                 let result = perft(&mut board, *depth as i32, *depth as i32, false);
+
                 if result != *expected as i32 {
                     println!("Test failed at depth {}", depth);
                     println!("FEN: {}", fen);
