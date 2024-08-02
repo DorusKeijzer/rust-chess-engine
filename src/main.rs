@@ -1163,7 +1163,7 @@ mod tests {
         #[test]
         fn perft_test_3() {
             let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -  ";
-            let expected = vec![(1, 14), (2, 191), (3, 2812), (4, 43_238), (5, 746_624)];
+            let expected = vec![(1, 14), (2, 191), (3, 2812), (4, 43_238), (5, 674_624)];
             run_perft_test(fen, &expected);
         }
 
@@ -1195,7 +1195,7 @@ mod tests {
                 (2, 2079),
                 (3, 89_890),
                 (4, 3_894_594),
-                (5, 164_076_551),
+                (5, 164_075_551),
             ];
             run_perft_test(fen, &expected);
         }

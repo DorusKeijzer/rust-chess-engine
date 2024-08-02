@@ -54,7 +54,7 @@ pub fn format_for_debug(mut board: Board, depth: i32) {
         let alg_move = alg_move(&m);
         make_move(&mut board, &m, true);
         let perft_score = perft(&mut board, depth - 1, depth - 1, false);
-        println!("{}: {}", alg_move, perft_score);
+        println!("{} {}", alg_move, perft_score);
         unmake_move(&mut board, &m, true);
     }
     println!("\n{}", total);

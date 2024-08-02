@@ -17,7 +17,7 @@ impl ChessEngine {
         let mut rel_value: HashMap<isize, i32> = HashMap::new();
         rel_value.insert(0, 1);
         rel_value.insert(1, 5);
-        rel_value.insert(2, 20);
+        rel_value.insert(2, 0);
         rel_value.insert(3, 3);
         rel_value.insert(4, 9);
         rel_value.insert(5, 3);
@@ -63,15 +63,18 @@ impl ChessEngine {
     }
 
     pub fn find_best_move(&mut self, _command: &str) -> String {
-        // Parse the go command, search for the best move, and return it
-        //
-        let moves = legalmoves::generate_legal_moves(&mut self.board);
-        println!("meeko found best move: {}", moves[1]);
-        make_move(&mut self.board, &moves[1], true);
-        self.board.draw();
-        self.board.print_state();
-    }
+        let best_move = self.find_best_move_minimax(3); // You can adjust the depth as needed
 
+        if let Some(m) = best_move {
+            println!("meeko found best move: {}", m);
+            make_move(&mut self.board, &m, true);
+            self.board.draw();
+            self.board.print_state();
+            m.to_string()
+        } else {
+            "no legal moves".to_string()
+        }
+    }
     /// parses a string such as "position fen bla bla bla moves a1a2"
     /// returns the fen string and the last performed move
     fn parse_position<'a>(&mut self, command: &'a str) -> (String, Option<&'a str>) {
@@ -108,21 +111,36 @@ impl ChessEngine {
 
     /// evaluates the current position on the board
 
-    fn minimax(&mut self, evaluation: fn(&board, &hashmap<isize, i32>) -> i32, depth: i32) -> i32 {
+    fn minimax(
+        &mut self,
+        evaluation: fn(&Board, &HashMap<isize, i32>) -> i32,
+        depth: i32,
+    ) -> (i32, Option<Move>) {
         if depth == 0 {
-            return evaluation(&self.board, &self.rel_value);
+            return (evaluation(&self.board, &self.rel_value), None);
         }
 
-        let mut max_value = std::i32::min;
+        let mut max_value = std::i32::MIN;
+        let mut best_move = None;
         let moves = generate_legal_moves(&mut self.board);
+
         for m in moves {
-            let score = -self.minimax(evaluation, depth - 1);
+            make_move(&mut self.board, &m, true);
+            let (score, _) = self.minimax(evaluation, depth - 1);
+            let score = -score; // Negate the score for the opponent's perspective
+            make_move(&mut self.board, &m, false); // Undo the move
 
             if score > max_value {
                 max_value = score;
+                best_move = Some(m);
             }
         }
-        return max_value;
+
+        (max_value, best_move)
+    }
+    pub fn find_best_move_minimax(&mut self, depth: i32) -> Option<Move> {
+        let (_, best_move) = self.minimax(relative_value_evaluation, depth);
+        best_move
     }
 }
 fn relative_value_evaluation(board: &Board, rel_value: &HashMap<isize, i32>) -> i32 {
