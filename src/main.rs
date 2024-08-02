@@ -37,7 +37,7 @@ use crate::{
 /// Opening books
 use std::io::{self, BufRead, Write};
 
-fn temp_main() {
+fn main() {
     let mut engine = ChessEngine::new(); // You'll need to implement this
 
     let stdin = io::stdin();
@@ -135,7 +135,7 @@ fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
     }
 }
 
-fn main() {
+fn temp_main() {
     // Get the argument from the command line
     let args: Vec<String> = env::args().collect();
     if args.len() == 0 {}
@@ -149,8 +149,7 @@ fn main() {
     match mode.as_str() {
         "default" => {
             let mut board = Board::new(Some(
-                "8/8/3p4/KPp4r/R4p1k/8/4P1P1/8 w - c6 0 2 1
-",
+                "r3k2Q/p2pqpb1/bn2pnp1/2pPN3/1p2P3/2N4p/PPPBBPPP/R3K2R b KQq - 0 2",
             ));
             board.draw();
             let legalmoves = generate_legal_moves(&mut board);

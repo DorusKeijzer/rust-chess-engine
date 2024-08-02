@@ -1,4 +1,4 @@
-use crate::legalmoves::generate_legal_moves;
+use crate::legalmoves::{generate_legal_moves, unmake_move};
 use crate::{algebraic_to_move, board::Board, legalmoves, make_move, utils, BitIter, Move, Turn};
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -63,14 +63,14 @@ impl ChessEngine {
     }
 
     pub fn find_best_move(&mut self, _command: &str) -> String {
-        let best_move = self.find_best_move_minimax(3); // You can adjust the depth as needed
+        let best_move = self.find_best_move_minimax(4); // You can adjust the depth as needed
 
         if let Some(m) = best_move {
             println!("meeko found best move: {}", m);
             make_move(&mut self.board, &m, true);
             self.board.draw();
             self.board.print_state();
-            m.to_string()
+            m.alg_move()
         } else {
             "no legal moves".to_string()
         }
@@ -120,7 +120,7 @@ impl ChessEngine {
             return (evaluation(&self.board, &self.rel_value), None);
         }
 
-        let mut max_value = std::i32::MIN;
+        let mut max_value = std::i32::MIN + 1;
         let mut best_move = None;
         let moves = generate_legal_moves(&mut self.board);
 
@@ -128,7 +128,7 @@ impl ChessEngine {
             make_move(&mut self.board, &m, true);
             let (score, _) = self.minimax(evaluation, depth - 1);
             let score = -score; // Negate the score for the opponent's perspective
-            make_move(&mut self.board, &m, false); // Undo the move
+            unmake_move(&mut self.board, &m, true); // Undo the move
 
             if score > max_value {
                 max_value = score;
@@ -156,7 +156,6 @@ fn relative_value_evaluation(board: &Board, rel_value: &HashMap<isize, i32>) -> 
             black_value += rel_value.get(&(bb_index as isize - 6)).unwrap();
         }
     }
-
     match board.current_state.turn {
         Turn::White => white_value - black_value,
         Turn::Black => black_value - white_value,
