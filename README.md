@@ -1,6 +1,20 @@
-# Your Chess Engine
-
-[Other content...]
+# To do list: 
+* finish PERFT
+* track PERFT time per commit
+* optimize move generation 
+  * magic bitboards
+  * pawn generation through bitboards
+  * store moves as array not vec
+  * inlining commonly used functions
+  * faster check detection
+  * parallelization
+* search
+  * alpha beta pruning
+  * move ordering
+  * zobrist hashing
+* evaluation:
+  * neural network as evaluation function
+* opening moves
 
 ## Perft Results
 
