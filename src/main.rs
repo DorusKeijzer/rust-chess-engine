@@ -70,7 +70,10 @@ fn perft_tests() {
                 let now = Instant::now();
                 let perft_score = perft(&mut board, depth, depth, false);
                 let elapsed = now.elapsed();
-                println!("| {} | {}/{} | {:.2?}", depth, perft_score, target, elapsed);
+                println!(
+                    "| {} | {}/{} | {:.2?} |",
+                    depth, perft_score, target, elapsed
+                );
                 if perft_score != target {
                     correct_so_far = false;
                 }
