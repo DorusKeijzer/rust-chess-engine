@@ -80,8 +80,8 @@ fn perft_tests() {
             } else {
                 println!("| {} | Failed | -- |", depth)
             }
-            println!("");
         }
+        println!("");
     }
 }
 
