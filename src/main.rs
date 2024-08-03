@@ -75,8 +75,9 @@ fn perft_tests() {
                     correct_so_far = false;
                 }
             } else {
-                println!("Depth {}: Failed", depth)
+                println!("| {} | Failed | -- |", depth)
             }
+            println!("");
         }
     }
 }
