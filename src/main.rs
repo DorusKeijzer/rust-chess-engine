@@ -62,8 +62,8 @@ fn perft_tests() {
     for (position_no, (position, expected)) in zipped.enumerate() {
         let mut correct_so_far = true;
         println!("Position {}: {}", position_no, position);
-        println!("| Depth | Perft score | time |");
-        println!("|-------|-------------|------|");
+        println!("| Depth | Perft score | time | correct  |");
+        println!("|-------|-------------|------|----------|");
         for (depth, target) in expected {
             if correct_so_far {
                 let mut board = Board::new(Some(position));
@@ -71,14 +71,18 @@ fn perft_tests() {
                 let perft_score = perft(&mut board, depth, depth, false);
                 let elapsed = now.elapsed();
                 println!(
-                    "| {} | {}/{} | {:.2?} |",
-                    depth, perft_score, target, elapsed
+                    "| {} | {}/{} | {:.2?} | {} |",
+                    depth,
+                    perft_score,
+                    target,
+                    elapsed,
+                    (perft_score == target)
                 );
                 if perft_score != target {
                     correct_so_far = false;
                 }
             } else {
-                println!("| {} | Failed | -- |", depth)
+                println!("| {} | -- | -- | false |", depth)
             }
         }
         println!("");
