@@ -62,15 +62,15 @@ fn perft_tests() {
     for (position_no, (position, expected)) in zipped.enumerate() {
         let mut correct_so_far = true;
         println!("Position {}: {}", position_no, position);
+        println!("| Depth | Perft score | time |");
+        println!("|-------|-------------|------|");
         for (depth, target) in expected {
             if correct_so_far {
                 let mut board = Board::new(Some(position));
                 let now = Instant::now();
                 let perft_score = perft(&mut board, depth, depth, false);
                 let elapsed = now.elapsed();
-                let count_part = format!("Depth {}: {}/{}", depth, perft_score, target);
-                let time_part = format!("{:>10.2?}", elapsed);
-                println!("{:<30}{}", count_part, time_part);
+                println!("| {} | {}/{} | {:.2?}", depth, perft_score, target, elapsed);
                 if perft_score != target {
                     correct_so_far = false;
                 }
