@@ -16,7 +16,6 @@ use crate::{
     utils::{algebraic_to_square, draw_bb, find_bitboard, square_to_algebraic, BitIter},
 };
 
-use chrono::Utc;
 /// TODO prio order:
 /// Debug EP:
 ///     
@@ -96,6 +95,24 @@ fn main() {
         return;
     }
 
+    if args.len() == 2 && args[1] == "default" {
+        let mut board = Board::new(Some(
+            "r3k2Q/p2pqpb1/bn2pnp1/2pPN3/1p2P3/2N4p/PPPBBPPP/R3K2R b KQq - 0 2",
+        ));
+        board.draw();
+        let legalmoves = generate_legal_moves(&mut board);
+
+        for l in legalmoves.clone() {
+            println!("{}", l);
+        }
+        println!("{}", legalmoves.len());
+    }
+    if args.len() == 2 && args[1] == "printtest" {
+        let mut board = Board::new(Some(
+            "r3k2Q/p2pqpb1/bn2pnp1/2pPN3/1p2P3/2N4p/PPPBBPPP/R3K2R b KQq - 0 2",
+        ));
+        board.draw();
+    }
     let mut engine = ChessEngine::new();
     let stdin = io::stdin();
     let mut stdout = io::stdout();

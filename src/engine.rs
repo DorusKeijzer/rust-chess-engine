@@ -63,8 +63,9 @@ impl ChessEngine {
     }
 
     pub fn find_best_move(&mut self, _command: &str) -> String {
-        let best_move = self.find_best_move_minimax(4); // You can adjust the depth as needed
-
+        //let best_move = self.find_best_move_minimax(4); // You can adjust the depth as needed
+        //
+        let best_move = self.find_best_move_alpha_beta(5);
         if let Some(m) = best_move {
             println!("meeko found best move: {}", m);
             make_move(&mut self.board, &m, true);
@@ -140,6 +141,49 @@ impl ChessEngine {
     }
     pub fn find_best_move_minimax(&mut self, depth: i32) -> Option<Move> {
         let (_, best_move) = self.minimax(relative_value_evaluation, depth);
+        best_move
+    }
+
+    pub fn alpha_beta(
+        &mut self,
+        evaluation: fn(&Board, &HashMap<isize, i32>) -> i32,
+        depth: i32,
+        mut alpha: i32,
+        beta: i32,
+    ) -> (i32, Option<Move>) {
+        if depth == 0 {
+            return (evaluation(&self.board, &self.rel_value), None);
+        }
+
+        let mut best_move = None;
+        let moves = generate_legal_moves(&mut self.board);
+
+        for m in moves {
+            make_move(&mut self.board, &m, true);
+            let (score, _) = self.alpha_beta(evaluation, depth - 1, -beta, -alpha);
+            let score = -score; // Negate the score for the opponent's perspective
+            unmake_move(&mut self.board, &m, true); // Undo the move
+
+            if score > alpha {
+                alpha = score;
+                best_move = Some(m);
+            }
+
+            if alpha >= beta {
+                break; // Beta cutoff
+            }
+        }
+
+        (alpha, best_move)
+    }
+
+    pub fn find_best_move_alpha_beta(&mut self, depth: i32) -> Option<Move> {
+        let (_, best_move) = self.alpha_beta(
+            relative_value_evaluation,
+            depth,
+            std::i32::MIN + 1,
+            std::i32::MAX,
+        );
         best_move
     }
 }

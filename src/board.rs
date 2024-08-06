@@ -153,6 +153,7 @@ impl Board {
         println!("Castling rights: {castling_rights:b}");
         println!("En passant square: {ep}");
     }
+
     pub fn draw(&self) {
         println!("");
         println!("     A  B  C  D  E  F  G  H");
@@ -161,11 +162,11 @@ impl Board {
         let mut result: String = String::from("");
         // this order is used to preserve little-endian indexing
         let mut col = 8;
-        for i in (0..64).rev() {
+        for i in (0..64) {
             // when every column in a row is filled, print this row
             if col == 0 {
                 col = 8;
-                println!("{}  {}", 7 - i / 8, result);
+                println!("{}   {}", 7 - i / 8, result);
                 println!("");
                 result = String::from("");
             }
@@ -178,24 +179,24 @@ impl Board {
 
                 if utils::bitset(&piecebb, i) {
                     // the character of the piece if a piece is found
-                    result.insert(0, PIECE_CHARACTERS[bbindex]);
+                    //println!("bitset: {}", i);
+                    //result.insert(0, PIECE_CHARACTERS[bbindex]);
+                    result.push(PIECE_CHARACTERS[bbindex]);
                     piecenotfound = false;
                 }
                 bbindex += 1;
             }
             if piecenotfound {
-                result.insert(0, '0');
+                result.push('0');
             }
 
-            result.insert(0, ' ');
-            result.insert(0, ' ');
+            result.push(' ');
 
             col -= 1;
         }
-        println!("8  {}", result);
+        println!("8   {}", result);
         println!("");
     }
-
     #[allow(dead_code)]
     pub fn parse_fen(&mut self, fenstring: &str) {
         // because fen strings do not obey little endian notation,
