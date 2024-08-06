@@ -184,7 +184,7 @@ fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
         Some(5) => Piece::Bishop,
         _ => panic!(),
     };
-    let captured = match find_bitboard(&board, to).map(|x| x % 6) {
+    let mut captured = match find_bitboard(&board, to).map(|x| x % 6) {
         Some(0) => Some(Piece::Pawn),
         Some(1) => Some(Piece::Rook),
         Some(2) => Some(Piece::King),
@@ -193,9 +193,6 @@ fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
         Some(5) => Some(Piece::Bishop),
         _ => None,
     };
-    if let Some(c) = captured {
-        println!("captured: {} at {}", c, to);
-    }
     let castled = piece == Piece::King && (from == 4 && (to == 6 || to == 2))
         || (from == 60 && (to == 62 || to == 58));
     let en_passant_capture = if piece == Piece::Pawn {
@@ -209,13 +206,18 @@ fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
             } else {
                 to + 8 // The square behind the captured pawn for Black
             };
-            board.current_state.en_passant == Some(ep_square)
+            captured = Some(Piece::Pawn); // Set captured to Pawn for en passant
+            true
         } else {
             false
         }
     } else {
         false
     };
+    if let Some(c) = captured {
+        println!("captured: {} at {}", c, to);
+    }
+
     Move {
         from,
         to,
