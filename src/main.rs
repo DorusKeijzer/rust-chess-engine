@@ -6,6 +6,8 @@ mod legalmoves;
 mod utils; // utility functions // legal move generation
 use std::env;
 
+use utils::count_pieces;
+
 use crate::{
     board::{Board, State, Turn},
     engine::ChessEngine,
@@ -107,11 +109,27 @@ fn main() {
         }
         println!("{}", legalmoves.len());
     }
-    if args.len() == 2 && args[1] == "printtest" {
+    if args.len() == 2 && args[1] == "ep_test" {
         let mut board = Board::new(Some(
-            "r3k2Q/p2pqpb1/bn2pnp1/2pPN3/1p2P3/2N4p/PPPBBPPP/R3K2R b KQq - 0 2",
+            "rnbqkbnr/2p2ppp/1p1p4/p2Pp3/P7/1P6/2P1PPPP/RNBQKBNR w KQkq e6 0 5",
         ));
         board.draw();
+        println!("Count: {}", count_pieces(&board));
+
+        let m = Move {
+            from: algebraic_to_square("d5").unwrap(),
+            to: algebraic_to_square("e6").unwrap(),
+            piece: Piece::Pawn,
+            promotion: None,
+            castled: false,
+            captured: Some(Piece::Pawn),
+            en_passant_capture: true,
+        };
+
+        make_move(&mut board, &m, true);
+
+        board.draw();
+        println!("Count: {}", count_pieces(&board));
     }
     let mut engine = ChessEngine::new();
     let stdin = io::stdin();

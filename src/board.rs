@@ -166,7 +166,7 @@ impl Board {
             // when every column in a row is filled, print this row
             if col == 0 {
                 col = 8;
-                println!("{}   {}", 7 - i / 8, result);
+                println!("{}   {}", 9 - i / 8, result);
                 println!("");
                 result = String::from("");
             }
@@ -194,7 +194,7 @@ impl Board {
 
             col -= 1;
         }
-        println!("8   {}", result);
+        println!("1   {}", result);
         println!("");
     }
     #[allow(dead_code)]
