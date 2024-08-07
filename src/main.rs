@@ -61,34 +61,30 @@ fn main() {
     }
     if args.len() == 2 && args[1] == "ep_test" {
         let mut board = Board::new(Some(
-            "rnbqkbnr/2p2ppp/1p1p4/p2pp3/p7/1p6/2p1pppp/rnbqkbnr w kqkq e6 0 5",
+            "rnbqkbnr/ppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 4",
         ));
         board.draw();
         println!("Count: {}", count_pieces(&board));
-
-        let m = Move {
-            from: algebraic_to_square("d5").unwrap(),
-            to: algebraic_to_square("e6").unwrap(),
-            piece: Piece::Pawn,
-            promotion: None,
-            castled: false,
-            captured: Some(Piece::Pawn),
-            en_passant_capture: true,
-        };
-
+        let m = algebraic_to_move(&board, "e2e4");
+        make_move(&mut board, &m, true);
+        let mut board = Board::new(Some(
+            "rnbqkbnr/2p1pppp/p7/3p4/4P3/7N/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+        ));
+        board.draw();
+        println!("Count: {}", count_pieces(&board));
+        let m = algebraic_to_move(&board, "e1g1");
         make_move(&mut board, &m, true);
 
         board.draw();
-        println!("Count: {}", count_pieces(&board));
-
-        draw_bb(1);
-        draw_bb(4);
-        let mut board = Board::new(Some("8/8/8/8/8/8/8/8 w kqkq e6 0 5"));
-
-        board.bitboards[0] = 1;
-        board.draw();
-        board.bitboards[0] = 4;
-        board.draw();
+        //   let m = Move {
+        //       from: algebraic_to_square("d5").unwrap(),
+        //       to: algebraic_to_square("e6").unwrap(),
+        //       piece: Piece::Pawn,
+        //       promotion: None,
+        //        castled: false,
+        //       captured: Some(Piece::Pawn),
+        //     en_passant_capture: true,
+        //   };
     }
     let mut engine = ChessEngine::new();
     let stdin = io::stdin();
@@ -123,9 +119,14 @@ fn main() {
 }
 
 fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
-    let from = algebraic_to_square(&algebraic_string[0..2]).unwrap();
-    let to = algebraic_to_square(&algebraic_string[2..4]).unwrap();
+    let mut from = algebraic_to_square(&algebraic_string[0..2]).unwrap();
+    let mut to = algebraic_to_square(&algebraic_string[2..4]).unwrap();
+    println!("UNWRAPPING: {} to {}", from, to);
+    println!("{}: ", from);
+    draw_bb(utils::mask(from));
 
+    println!("{}: ", to);
+    draw_bb(utils::mask(to));
     let promotion = match &algebraic_string.chars().nth(4) {
         Some('q') => Some(Piece::Queen),
         Some('r') => Some(Piece::Rook),
@@ -134,7 +135,7 @@ fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
         Some(_) => None,
         None => None,
     };
-    let piece = match find_bitboard(&board, from).map(|x| x % 6) {
+    let mut piece = match find_bitboard(&board, from).map(|x| x % 6) {
         Some(0) => Piece::Pawn,
         Some(1) => Piece::Rook,
         Some(2) => Piece::King,
@@ -154,6 +155,26 @@ fn algebraic_to_move(board: &Board, algebraic_string: &str) -> Move {
     };
     let castled = piece == Piece::King && (from == 4 && (to == 6 || to == 2))
         || (from == 60 && (to == 62 || to == 58));
+    // castling is represented as the rook move internally, so translate king move to rook move
+    if castled {
+        piece = Piece::Rook;
+        if from == 4 && to == 6 {
+            from = 7;
+            to = 5
+        };
+        if from == 4 && to == 2 {
+            from = 0;
+            to = 3
+        };
+        if from == 60 && to == 62 {
+            from = 63;
+            to = 61
+        };
+        if from == 60 && to == 58 {
+            from = 56;
+            to = 59
+        };
+    }
     let en_passant_capture = if piece == Piece::Pawn {
         let file_diff = (to % 8) as i8 - (from % 8) as i8;
         let rank_diff = (to / 8) as i8 - (from / 8) as i8;
