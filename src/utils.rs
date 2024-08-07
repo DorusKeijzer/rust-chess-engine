@@ -144,7 +144,7 @@ pub fn draw_bb(bb: u64) {
 
     let mut result: String = String::from("");
     // this order is used to preserve little-endian indexing
-    for row in (0..8).rev() {
+    for row in (0..8) {
         let k = row * 8;
         let row = 7 - row;
         for col in (k..k + 8)

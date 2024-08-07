@@ -65,7 +65,7 @@ impl ChessEngine {
     pub fn find_best_move(&mut self, _command: &str) -> String {
         //let best_move = self.find_best_move_minimax(4); // You can adjust the depth as needed
         //
-        let best_move = self.find_best_move_alpha_beta(5);
+        let best_move = self.find_best_move_alpha_beta(6);
         if let Some(m) = best_move {
             println!("meeko found best move: {}", m);
             make_move(&mut self.board, &m, true);

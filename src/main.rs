@@ -39,56 +39,6 @@ use crate::{
 use std::io::{self, BufRead, Write};
 use std::iter::zip;
 use std::time::Instant;
-fn perft_tests() {
-    let positions = vec![
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
-        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
-        "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -  ",
-        "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-        "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  ",
-        "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
-    ];
-
-    #[rustfmt::skip]
-     let expected = vec![
-        vec![(1, 20), (2, 400), (3, 8902), (4, 197_281), (5, 4_865_609)],
-        vec![(1, 48), (2, 2039), (3, 97_862), (4, 4_085_603), (5, 193_690_690)],
-        vec![(1, 14), (2, 191), (3, 2812), (4, 43_238), (5, 674_624)],
-        vec![(1, 6), (2, 264), (3, 9467), (4, 422_333), (5, 15_833_292)],
-        vec![(1, 44), (2, 1486), (3, 62_379), (4, 2_103_487), (5, 89_941_194)],
-        vec![(1, 46), (2, 2079), (3, 89_890), (4, 3_894_594), (5, 164_075_551)] 
-    ];
-
-    let zipped = zip(positions, expected);
-    for (position_no, (position, expected)) in zipped.enumerate() {
-        let mut correct_so_far = true;
-        println!("Position {}: {}", position_no, position);
-        println!("| Depth | Perft score | time | correct  |");
-        println!("|-------|-------------|------|----------|");
-        for (depth, target) in expected {
-            if correct_so_far {
-                let mut board = Board::new(Some(position));
-                let now = Instant::now();
-                let perft_score = perft(&mut board, depth, depth, false);
-                let elapsed = now.elapsed();
-                println!(
-                    "| {} | {}/{} | {:.2?} | {} |",
-                    depth,
-                    perft_score,
-                    target,
-                    elapsed,
-                    (perft_score == target)
-                );
-                if perft_score != target {
-                    correct_so_far = false;
-                }
-            } else {
-                println!("| {} | -- | -- | false |", depth)
-            }
-        }
-        println!("");
-    }
-}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -111,7 +61,7 @@ fn main() {
     }
     if args.len() == 2 && args[1] == "ep_test" {
         let mut board = Board::new(Some(
-            "rnbqkbnr/2p2ppp/1p1p4/p2Pp3/P7/1P6/2P1PPPP/RNBQKBNR w KQkq e6 0 5",
+            "rnbqkbnr/2p2ppp/1p1p4/p2pp3/p7/1p6/2p1pppp/rnbqkbnr w kqkq e6 0 5",
         ));
         board.draw();
         println!("Count: {}", count_pieces(&board));
@@ -130,6 +80,15 @@ fn main() {
 
         board.draw();
         println!("Count: {}", count_pieces(&board));
+
+        draw_bb(1);
+        draw_bb(4);
+        let mut board = Board::new(Some("8/8/8/8/8/8/8/8 w kqkq e6 0 5"));
+
+        board.bitboards[0] = 1;
+        board.draw();
+        board.bitboards[0] = 4;
+        board.draw();
     }
     let mut engine = ChessEngine::new();
     let stdin = io::stdin();
@@ -278,6 +237,56 @@ fn temp_main() {
         _ => {
             println!("Not a valid mode :^)")
         }
+    }
+}
+fn perft_tests() {
+    let positions = vec![
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -",
+        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ",
+        "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -  ",
+        "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+        "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  ",
+        "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+    ];
+
+    #[rustfmt::skip]
+     let expected = vec![
+        vec![(1, 20), (2, 400), (3, 8902), (4, 197_281), (5, 4_865_609)],
+        vec![(1, 48), (2, 2039), (3, 97_862), (4, 4_085_603), (5, 193_690_690)],
+        vec![(1, 14), (2, 191), (3, 2812), (4, 43_238), (5, 674_624)],
+        vec![(1, 6), (2, 264), (3, 9467), (4, 422_333), (5, 15_833_292)],
+        vec![(1, 44), (2, 1486), (3, 62_379), (4, 2_103_487), (5, 89_941_194)],
+        vec![(1, 46), (2, 2079), (3, 89_890), (4, 3_894_594), (5, 164_075_551)] 
+    ];
+
+    let zipped = zip(positions, expected);
+    for (position_no, (position, expected)) in zipped.enumerate() {
+        let mut correct_so_far = true;
+        println!("Position {}: {}", position_no, position);
+        println!("| Depth | Perft score | time | correct  |");
+        println!("|-------|-------------|------|----------|");
+        for (depth, target) in expected {
+            if correct_so_far {
+                let mut board = Board::new(Some(position));
+                let now = Instant::now();
+                let perft_score = perft(&mut board, depth, depth, false);
+                let elapsed = now.elapsed();
+                println!(
+                    "| {} | {}/{} | {:.2?} | {} |",
+                    depth,
+                    perft_score,
+                    target,
+                    elapsed,
+                    (perft_score == target)
+                );
+                if perft_score != target {
+                    correct_so_far = false;
+                }
+            } else {
+                println!("| {} | -- | -- | false |", depth)
+            }
+        }
+        println!("");
     }
 }
 
